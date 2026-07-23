@@ -4,7 +4,6 @@ import { describe, expect, it, vi } from "vitest";
 import {
   CodexTextGeneration,
   CursorTextGeneration,
-  KiloTextGeneration,
   OpenCodeTextGeneration,
   type TextGenerationShape,
   TextGeneration,
@@ -93,16 +92,14 @@ function createTextGenerationDouble(label: string) {
 function makeProviderTextGenerationTestLayer() {
   const codex = createTextGenerationDouble("codex");
   const cursor = createTextGenerationDouble("cursor");
-  const kilo = createTextGenerationDouble("kilo");
   const opencode = createTextGenerationDouble("opencode");
   const layer = ProviderTextGenerationLive.pipe(
     Layer.provide(Layer.succeed(CodexTextGeneration, codex.service)),
     Layer.provide(Layer.succeed(CursorTextGeneration, cursor.service)),
-    Layer.provide(Layer.succeed(KiloTextGeneration, kilo.service)),
     Layer.provide(Layer.succeed(OpenCodeTextGeneration, opencode.service)),
   );
 
-  return { layer, codex, cursor, kilo, opencode };
+  return { layer, codex, cursor, opencode };
 }
 
 describe("ProviderTextGenerationLive", () => {
@@ -144,28 +141,6 @@ describe("ProviderTextGenerationLive", () => {
     expect(opencode.generateDiffSummary).toHaveBeenCalledTimes(1);
     expect(codex.generateDiffSummary).not.toHaveBeenCalled();
     expect(cursor.generateDiffSummary).not.toHaveBeenCalled();
-  });
-
-  it("routes explicit Kilo model selections through Kilo text generation", async () => {
-    const { layer, codex, kilo, opencode } = makeProviderTextGenerationTestLayer();
-
-    await Effect.runPromise(
-      Effect.gen(function* () {
-        const textGeneration = yield* TextGeneration;
-        yield* textGeneration.generateDiffSummary({
-          cwd: "/repo",
-          patch: "diff --git a/file.ts b/file.ts",
-          modelSelection: {
-            provider: "kilo",
-            model: "kilo/kilo-auto/free",
-          },
-        });
-      }).pipe(Effect.provide(layer)),
-    );
-
-    expect(kilo.generateDiffSummary).toHaveBeenCalledTimes(1);
-    expect(opencode.generateDiffSummary).not.toHaveBeenCalled();
-    expect(codex.generateDiffSummary).not.toHaveBeenCalled();
   });
 
   it("routes explicit OpenCode model selections and preserves provider options", async () => {

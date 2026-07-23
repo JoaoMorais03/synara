@@ -19,7 +19,6 @@ const synaraSkillPath = "/Users/me/.synara/skills/reviewer/SKILL.md";
 const codexSkillPath = "/Users/me/.codex/skills/reviewer/SKILL.md";
 const claudeSkillPath = "/Users/me/.claude/skills/reviewer/SKILL.md";
 const cursorSkillPath = "/Users/me/.cursor/skills/reviewer/SKILL.md";
-const piSkillPath = "/Users/me/.pi/agent/skills/reviewer/SKILL.md";
 
 describe("shouldInlineSkillForProvider", () => {
   it("skips codex-native and synara roots for codex but inlines foreign provider roots", () => {
@@ -43,14 +42,8 @@ describe("shouldInlineSkillForProvider", () => {
     expect(shouldInlineSkillForProvider("claudeAgent", codexSkillPath)).toBe(true);
   });
 
-  it("inlines cross-provider paths for pi but not pi-native skills", () => {
-    expect(shouldInlineSkillForProvider("pi", synaraSkillPath)).toBe(true);
-    expect(shouldInlineSkillForProvider("pi", claudeSkillPath)).toBe(true);
-    expect(shouldInlineSkillForProvider("pi", piSkillPath)).toBe(false);
-  });
-
   it("always inlines for providers without native skill support", () => {
-    for (const provider of ["antigravity", "grok", "kilo", "opencode"] as const) {
+    for (const provider of ["grok", "opencode"] as const) {
       expect(shouldInlineSkillForProvider(provider, synaraSkillPath)).toBe(true);
       expect(shouldInlineSkillForProvider(provider, claudeSkillPath)).toBe(true);
     }
@@ -67,7 +60,7 @@ describe("buildInlineSkillInstructions", () => {
       await writeFile(skillPath, "# Reviewer\n\nAlways review carefully.");
 
       const text = await buildInlineSkillInstructions({
-        provider: "antigravity",
+        provider: "grok",
         skills: [
           { name: "reviewer", path: skillPath },
           { name: "missing", path: path.join(root, ".synara", "skills", "missing", "SKILL.md") },
@@ -92,7 +85,7 @@ describe("buildInlineSkillInstructions", () => {
       await writeFile(skillPath, "content".repeat(100));
 
       const text = await buildInlineSkillInstructions({
-        provider: "antigravity",
+        provider: "grok",
         skills: [{ name: "reviewer", path: skillPath }],
         maxChars: 50,
       });

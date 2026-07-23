@@ -25,12 +25,9 @@ const RuntimeEventRawSource = Schema.Literals([
   "claude.sdk.permission",
   "claude.sdk.hook",
   "codex.sdk.thread-event",
-  "antigravity.cli.event",
   "acp.jsonrpc",
   "acp.cursor.extension",
-  "kilo.sdk.event",
   "opencode.sdk.event",
-  "pi.sdk.event",
 ]);
 export type RuntimeEventRawSource = typeof RuntimeEventRawSource.Type;
 

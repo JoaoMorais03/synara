@@ -37,7 +37,7 @@ describe("parseCodexUsage", () => {
     expect(limit(snapshot, "5h")?.windowDurationMins).toBe(300);
     expect(limit(snapshot, "Weekly")?.usedPercent).toBe(24);
     expect(limit(snapshot, "Weekly")?.windowDurationMins).toBe(10_080);
-    expect(usageLine(snapshot, "Credits")?.value).toContain("5.39");
+    expect(usageLine(snapshot, "Credits")?.value).toMatch(/5[,.]39/);
   });
 
   it("prefers the response headers over the body for used percent", () => {
@@ -69,8 +69,8 @@ describe("parseClaudeUsage", () => {
     expect(limit(snapshot, "Weekly")?.usedPercent).toBe(40);
     expect(limit(snapshot, "Sonnet")?.usedPercent).toBe(10);
     const extra = usageLine(snapshot, "Extra usage");
-    expect(extra?.value).toContain("5.00");
-    expect(extra?.value).toContain("100.00");
+    expect(extra?.value).toMatch(/5[,.]00/);
+    expect(extra?.value).toMatch(/100[,.]00/);
   });
 });
 
@@ -96,8 +96,8 @@ describe("parseCursorUsage", () => {
     expect(snapshot.planName).toBe("Pro");
     expect(limit(snapshot, "Current")?.usedPercent).toBeCloseTo(15.48);
     // used = (10000 - 4000) / 100 = $60.00 of $100.00
-    expect(usageLine(snapshot, "On-demand")?.value).toContain("60.00");
+    expect(usageLine(snapshot, "On-demand")?.value).toMatch(/60[,.]00/);
     // remaining = (5000 - 1200) / 100 = $38.00 of $50.00
-    expect(usageLine(snapshot, "Credits")?.value).toContain("38.00");
+    expect(usageLine(snapshot, "Credits")?.value).toMatch(/38[,.]00/);
   });
 });

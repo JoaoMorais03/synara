@@ -41,22 +41,13 @@ export const PROVIDER_DESCRIPTORS = [
       learnMoreHref: "https://cursor.com/dashboard",
     },
   },
-  {
-    kind: "antigravity",
-    displayName: PROVIDER_DISPLAY_NAMES.antigravity,
-    available: true,
-    usage: null,
-  },
   { kind: "grok", displayName: PROVIDER_DISPLAY_NAMES.grok, available: true, usage: null },
-  { kind: "droid", displayName: PROVIDER_DISPLAY_NAMES.droid, available: true, usage: null },
-  { kind: "kilo", displayName: PROVIDER_DISPLAY_NAMES.kilo, available: true, usage: null },
   {
     kind: "opencode",
     displayName: PROVIDER_DISPLAY_NAMES.opencode,
     available: true,
     usage: null,
   },
-  { kind: "pi", displayName: PROVIDER_DISPLAY_NAMES.pi, available: true, usage: null },
 ] as const satisfies readonly ProviderDescriptor[];
 
 export const PROVIDER_DESCRIPTOR_BY_KIND = Object.fromEntries(

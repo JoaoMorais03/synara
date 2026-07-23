@@ -8,7 +8,7 @@
  * - Codex: `[mcp_servers.synara]` TOML block (streamable HTTP +
  *   `bearer_token_env_var` resolved from the per-session process env).
  * - Claude Agent SDK: `mcpServers` record with an HTTP entry.
- * - ACP agents (cursor/grok/droid): `mcpServers` session entries; HTTP when
+ * - ACP agents (Cursor and Grok): `mcpServers` session entries; HTTP when
  *   the agent advertises `mcpCapabilities.http`, otherwise a stdio proxy that
  *   forwards to the HTTP endpoint.
  *

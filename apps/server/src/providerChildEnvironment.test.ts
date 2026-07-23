@@ -7,11 +7,11 @@ import { buildProviderChildEnvironment } from "./providerChildEnvironment";
 describe("buildProviderChildEnvironment", () => {
   it("strips Synara control-plane and inherited native capabilities", () => {
     const env = buildProviderChildEnvironment({
-      provider: "antigravity",
+      provider: "grok",
       baseEnv: {
         PATH: "/usr/bin",
         HOME: "/home/test",
-        GEMINI_API_KEY: "provider-key",
+        XAI_API_KEY: "provider-key",
         SYNARA_AUTH_TOKEN: "control-plane-secret",
         SYNARA_BROWSER_USE_PIPE_PATH: "/tmp/browser.sock",
         NODE_OPTIONS: "--require=/tmp/inject.js",
@@ -22,7 +22,7 @@ describe("buildProviderChildEnvironment", () => {
     expect(env).toEqual({
       PATH: "/usr/bin",
       HOME: "/home/test",
-      GEMINI_API_KEY: "provider-key",
+      XAI_API_KEY: "provider-key",
     });
   });
 
@@ -64,8 +64,6 @@ describe("buildProviderChildEnvironment", () => {
   it.each([
     ["claude", "ANTHROPIC_API_KEY", "GEMINI_API_KEY"],
     ["cursor", "CURSOR_API_KEY", "FACTORY_API_KEY"],
-    ["droid", "FACTORY_API_KEY", "XAI_API_KEY"],
-    ["antigravity", "GEMINI_API_KEY", "ANTHROPIC_API_KEY"],
     ["grok", "XAI_API_KEY", "GOOGLE_API_KEY"],
   ] as const)(
     "grants %s only its declared provider credential group",
@@ -84,7 +82,7 @@ describe("buildProviderChildEnvironment", () => {
     },
   );
 
-  it.each(["codex", "kilo", "opencode", "pi"] as const)(
+  it.each(["codex", "opencode"] as const)(
     "preserves upstream credential discovery for multi-provider %s",
     (provider) => {
       const env = buildProviderChildEnvironment({

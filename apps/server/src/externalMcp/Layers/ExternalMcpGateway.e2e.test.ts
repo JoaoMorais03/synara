@@ -279,12 +279,8 @@ describe("external MCP gateway stdio flow", () => {
       "codex",
       "claudeAgent",
       "cursor",
-      "antigravity",
       "grok",
-      "droid",
-      "kilo",
       "opencode",
-      "pi",
     ].map((provider) => ({
       provider: provider as ServerProviderStatus["provider"],
       status: "ready",

@@ -2,9 +2,7 @@ import {
   CLAUDE_CODE_EFFORT_OPTIONS,
   CODEX_REASONING_EFFORT_OPTIONS,
   DEFAULT_MODEL_BY_PROVIDER,
-  DROID_REASONING_EFFORT_OPTIONS,
   GROK_REASONING_EFFORT_OPTIONS,
-  PI_THINKING_LEVEL_OPTIONS,
   type ModelSelection,
   type ProviderKind,
   type ProviderListModelsResult,
@@ -180,12 +178,6 @@ const PROVIDER_TARGET_OPTION_RULES = {
       reasoningEffort: providerOptionRule("string", GROK_REASONING_EFFORT_OPTIONS),
     },
   }),
-  droid: defineProviderOptionConfig<"droid">({
-    primaryOptionKey: "reasoningEffort",
-    options: {
-      reasoningEffort: providerOptionRule("string", DROID_REASONING_EFFORT_OPTIONS),
-    },
-  }),
   claudeAgent: defineProviderOptionConfig<"claudeAgent">({
     primaryOptionKey: "effort",
     options: {
@@ -208,24 +200,6 @@ const PROVIDER_TARGET_OPTION_RULES = {
       }),
     },
   }),
-  pi: defineProviderOptionConfig<"pi">({
-    primaryOptionKey: "thinkingLevel",
-    options: { thinkingLevel: providerOptionRule("string", PI_THINKING_LEVEL_OPTIONS) },
-  }),
-  antigravity: defineProviderOptionConfig<"antigravity">({
-    primaryOptionKey: "reasoningEffort",
-    options: { reasoningEffort: providerOptionRule("string", [], "model-discovery") },
-  }),
-  kilo: defineProviderOptionConfig<"kilo">({
-    primaryOptionKey: "variant",
-    options: {
-      variant: providerOptionRule("string", [], "model-discovery"),
-      agent: providerOptionRule("string", [], "model-discovery", {
-        validation: { kind: "non-empty-string" },
-        allowsCustomValue: true,
-      }),
-    },
-  }),
   opencode: defineProviderOptionConfig<"opencode">({
     primaryOptionKey: "variant",
     options: {
@@ -239,7 +213,7 @@ const PROVIDER_TARGET_OPTION_RULES = {
 } as const satisfies Record<ProviderKind, ProviderTargetOptionConfig>;
 
 function providerDefaultModel(provider: ProviderKind): string | null {
-  return provider === "pi" ? null : DEFAULT_MODEL_BY_PROVIDER[provider];
+  return DEFAULT_MODEL_BY_PROVIDER[provider];
 }
 
 export function loadAgentGatewayProviderCatalog(input: {

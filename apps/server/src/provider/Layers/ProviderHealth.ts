@@ -61,7 +61,6 @@ import {
   DEFAULT_CURSOR_AGENT_BINARY,
   resolveCursorAgentBinaryPath,
 } from "../acp/CursorAcpCommand";
-import { hasDroidApiKeyEnv, resolveDroidCliBinaryPath } from "../acp/DroidAcpSupport";
 import { hasGrokApiKeyEnv } from "../acp/GrokAcpSupport";
 import {
   claudeAuthMetadata,
@@ -109,26 +108,17 @@ const OPENCODE_HEALTH_TIMEOUT_MS = 20_000;
 const CODEX_PROVIDER = "codex" as const;
 const CLAUDE_AGENT_PROVIDER = "claudeAgent" as const;
 const CURSOR_PROVIDER = "cursor" as const;
-const ANTIGRAVITY_PROVIDER = "antigravity" as const;
 const GROK_PROVIDER = "grok" as const;
-const DROID_PROVIDER = "droid" as const;
-const KILO_PROVIDER = "kilo" as const;
 const OPENCODE_PROVIDER = "opencode" as const;
-const PI_PROVIDER = "pi" as const;
 type ProviderStatuses = ReadonlyArray<ServerProviderStatus>;
 const DISABLED_PROVIDER_STATUS_MESSAGE = "Provider is disabled in Synara settings.";
-const MINIMUM_ANTIGRAVITY_CLI_VERSION = "1.0.12";
 
 const PROVIDERS = [
   CODEX_PROVIDER,
   CLAUDE_AGENT_PROVIDER,
   CURSOR_PROVIDER,
-  ANTIGRAVITY_PROVIDER,
   GROK_PROVIDER,
-  DROID_PROVIDER,
-  KILO_PROVIDER,
   OPENCODE_PROVIDER,
-  PI_PROVIDER,
 ] as const satisfies ReadonlyArray<ProviderKind>;
 
 const providerChildKind = (provider: ProviderKind): ProviderChildKind =>
@@ -169,15 +159,6 @@ function isOpenCodeNativeCommandPath(commandPath: string): boolean {
   );
 }
 
-function isKiloNativeCommandPath(commandPath: string): boolean {
-  const normalized = normalizeCommandPath(commandPath);
-  return (
-    normalized.endsWith("/.kilo/bin/kilo") ||
-    normalized.endsWith("/.local/bin/kilo") ||
-    normalized.includes("/.local/share/kilo/bin/")
-  );
-}
-
 export const PACKAGE_MANAGED_PROVIDER_UPDATES: Partial<
   Record<ProviderKind, PackageManagedProviderMaintenanceDefinition>
 > = {
@@ -201,45 +182,6 @@ export const PACKAGE_MANAGED_PROVIDER_UPDATES: Partial<
       isCommandPath: isClaudeNativeCommandPath,
     },
   },
-  antigravity: {
-    provider: ANTIGRAVITY_PROVIDER,
-    binaryName: "agy",
-    // Antigravity is distributed as a native binary and owns its update channel.
-    npmPackageName: null,
-    homebrew: null,
-    latestVersionSource: null,
-    nativeUpdate: {
-      executable: "agy",
-      args: () => ["update"],
-      lockKey: "antigravity-native",
-      strategy: "always",
-    },
-  },
-  droid: {
-    provider: DROID_PROVIDER,
-    binaryName: "droid",
-    npmPackageName: "@factory/cli",
-    homebrew: null,
-    nativeUpdate: {
-      executable: "droid",
-      args: () => ["update"],
-      lockKey: "droid-native",
-      strategy: "always",
-    },
-  },
-  kilo: {
-    provider: KILO_PROVIDER,
-    binaryName: "kilo",
-    npmPackageName: "@kilocode/cli",
-    homebrew: null,
-    nativeUpdate: {
-      executable: "kilo",
-      args: () => ["upgrade"],
-      lockKey: "kilo-native",
-      strategy: "matching-path",
-      isCommandPath: isKiloNativeCommandPath,
-    },
-  },
   opencode: {
     provider: OPENCODE_PROVIDER,
     binaryName: "opencode",
@@ -256,18 +198,6 @@ export const PACKAGE_MANAGED_PROVIDER_UPDATES: Partial<
       strategy: "always",
       excludedInstallSources: ["homebrew"],
       isCommandPath: isOpenCodeNativeCommandPath,
-    },
-  },
-  pi: {
-    provider: PI_PROVIDER,
-    binaryName: "pi",
-    npmPackageName: "@earendil-works/pi-coding-agent",
-    homebrew: null,
-    nativeUpdate: {
-      executable: "pi",
-      args: () => ["update"],
-      lockKey: "pi-native",
-      strategy: "always",
     },
   },
 };
@@ -657,7 +587,7 @@ const runProviderCommand = (
       ...(prepared.windowsVerbatimArguments ? { windowsVerbatimArguments: true } : {}),
       env,
       // Health probes are non-interactive. Leaving stdin as a pipe can keep CLIs
-      // such as Antigravity waiting even after a read-only subcommand has finished.
+      // when a read-only subcommand has already finished.
       stdin: "ignore",
     });
 
@@ -712,15 +642,6 @@ const runGrokCommand = (args: ReadonlyArray<string>, executable = "grok") =>
 
 const runOpenCodeCommand = (args: ReadonlyArray<string>, executable = "opencode") =>
   runProviderCommand(executable, args, providerCommandEnv(OPENCODE_PROVIDER)).pipe(
-    Effect.flatMap((result) =>
-      isWindowsShellCommandMissingResult({ code: result.code, stderr: result.stderr })
-        ? Effect.fail(new Error(`spawn ${executable} ENOENT`))
-        : Effect.succeed(result),
-    ),
-  );
-
-const runKiloCommand = (args: ReadonlyArray<string>, executable = "kilo") =>
-  runProviderCommand(executable, args, providerCommandEnv(KILO_PROVIDER)).pipe(
     Effect.flatMap((result) =>
       isWindowsShellCommandMissingResult({ code: result.code, stderr: result.stderr })
         ? Effect.fail(new Error(`spawn ${executable} ENOENT`))
@@ -813,24 +734,6 @@ function cursorModelsOutputHasModels(output: string): boolean {
 function cursorModelsOutputHasNoModels(output: string): boolean {
   return output.toLowerCase().includes("no models available");
 }
-
-const runPiCommand = (args: ReadonlyArray<string>, executable = "pi") =>
-  runProviderCommand(executable, args, providerCommandEnv(PI_PROVIDER)).pipe(
-    Effect.flatMap((result) =>
-      isWindowsShellCommandMissingResult({ code: result.code, stderr: result.stderr })
-        ? Effect.fail(new Error(`spawn ${executable} ENOENT`))
-        : Effect.succeed(result),
-    ),
-  );
-
-const runAntigravityCommand = (args: ReadonlyArray<string>, executable = "agy") =>
-  runProviderCommand(executable, args, providerCommandEnv(ANTIGRAVITY_PROVIDER)).pipe(
-    Effect.flatMap((result) =>
-      isWindowsShellCommandMissingResult({ code: result.code, stderr: result.stderr })
-        ? Effect.fail(new Error(`spawn ${executable} ENOENT`))
-        : Effect.succeed(result),
-    ),
-  );
 
 // ── Health check ────────────────────────────────────────────────────
 
@@ -1283,85 +1186,6 @@ export const makeCheckGrokProviderStatus = (
 
 export const checkGrokProviderStatus = makeCheckGrokProviderStatus();
 
-// ── Droid health check ─────────────────────────────────────────────
-
-const runDroidCommand = (args: ReadonlyArray<string>, executable = "droid") =>
-  runProviderCommand(executable, args, providerCommandEnv(DROID_PROVIDER));
-
-export const makeCheckDroidProviderStatus = (
-  binaryPath?: string,
-): Effect.Effect<ServerProviderStatus, never, ChildProcessSpawner.ChildProcessSpawner> =>
-  Effect.gen(function* () {
-    const checkedAt = new Date().toISOString();
-    const executable = resolveDroidCliBinaryPath(nonEmptyTrimmed(binaryPath) ?? undefined);
-
-    const versionProbe = yield* probeProviderCliVersion(
-      runDroidCommand(["--version"], executable),
-      DEFAULT_TIMEOUT_MS,
-    );
-
-    if (versionProbe.outcome === "missing" || versionProbe.outcome === "failure") {
-      const error = versionProbe.cause;
-      return {
-        provider: DROID_PROVIDER,
-        status: "error" as const,
-        available: false,
-        authStatus: "unknown" as const,
-        checkedAt,
-        message:
-          versionProbe.outcome === "missing"
-            ? "Droid CLI (`droid`) is not installed or not on PATH."
-            : `Failed to execute Droid CLI health check: ${error instanceof Error ? error.message : String(error)}.`,
-      } satisfies ServerProviderStatus;
-    }
-
-    if (versionProbe.outcome === "timeout") {
-      return {
-        provider: DROID_PROVIDER,
-        status: "error" as const,
-        available: false,
-        authStatus: "unknown" as const,
-        checkedAt,
-        message: "Droid CLI is installed but failed to run. Timed out while running command.",
-      } satisfies ServerProviderStatus;
-    }
-
-    if (versionProbe.outcome === "nonzero") {
-      const version = versionProbe.result;
-      const detail = detailFromResult(version);
-      return {
-        provider: DROID_PROVIDER,
-        status: "error" as const,
-        available: false,
-        authStatus: "unknown" as const,
-        checkedAt,
-        message: detail
-          ? `Droid CLI is installed but failed to run. ${detail}`
-          : "Droid CLI is installed but failed to run.",
-      } satisfies ServerProviderStatus;
-    }
-    const version = versionProbe.result;
-    const parsedVersion = parseGenericCliVersion(`${version.stdout}\n${version.stderr}`);
-    const hasApiKey = hasDroidApiKeyEnv();
-
-    return {
-      provider: DROID_PROVIDER,
-      status: "ready" as const,
-      available: true,
-      authStatus: hasApiKey ? ("authenticated" as const) : ("unknown" as const),
-      version: parsedVersion,
-      checkedAt,
-      ...(hasApiKey
-        ? { authType: "apiKey", authLabel: "Factory API Key" }
-        : {
-            message:
-              "Droid CLI is installed. Synara can use the CLI's cached device-pairing login; run `droid` to authenticate locally if needed, or set FACTORY_API_KEY.",
-          }),
-    } satisfies ServerProviderStatus;
-  });
-
-export const checkDroidProviderStatus = makeCheckDroidProviderStatus();
-
 // ── OpenCode health check ───────────────────────────────────────────
 
 export const makeCheckOpenCodeProviderStatus = (
@@ -1432,244 +1256,6 @@ export const makeCheckOpenCodeProviderStatus = (
   });
 
 export const checkOpenCodeProviderStatus = makeCheckOpenCodeProviderStatus();
-
-// ── Kilo health check ───────────────────────────────────────────────
-
-export const makeCheckKiloProviderStatus = (
-  binaryPath?: string,
-): Effect.Effect<ServerProviderStatus, never, ChildProcessSpawner.ChildProcessSpawner> =>
-  Effect.gen(function* () {
-    const checkedAt = new Date().toISOString();
-    const executable = nonEmptyTrimmed(binaryPath) ?? "kilo";
-
-    const versionProbe = yield* probeProviderCliVersion(
-      runKiloCommand(["--version"], executable),
-      DEFAULT_TIMEOUT_MS,
-    );
-
-    if (versionProbe.outcome === "missing" || versionProbe.outcome === "failure") {
-      const error = versionProbe.cause;
-      return {
-        provider: KILO_PROVIDER,
-        status: "error" as const,
-        available: false,
-        authStatus: "unknown" as const,
-        checkedAt,
-        message:
-          versionProbe.outcome === "missing"
-            ? "Kilo CLI (`kilo`) is not installed or not on PATH."
-            : `Failed to execute Kilo CLI health check: ${error instanceof Error ? error.message : String(error)}.`,
-      } satisfies ServerProviderStatus;
-    }
-
-    if (versionProbe.outcome === "timeout") {
-      return {
-        provider: KILO_PROVIDER,
-        status: "error" as const,
-        available: false,
-        authStatus: "unknown" as const,
-        checkedAt,
-        message: "Kilo CLI is installed but failed to run. Timed out while running command.",
-      } satisfies ServerProviderStatus;
-    }
-
-    if (versionProbe.outcome === "nonzero") {
-      const version = versionProbe.result;
-      const detail = detailFromResult(version);
-      return {
-        provider: KILO_PROVIDER,
-        status: "error" as const,
-        available: false,
-        authStatus: "unknown" as const,
-        checkedAt,
-        message: detail
-          ? `Kilo CLI is installed but failed to run. ${detail}`
-          : "Kilo CLI is installed but failed to run.",
-      } satisfies ServerProviderStatus;
-    }
-    const version = versionProbe.result;
-    const parsedVersion = parseGenericCliVersion(`${version.stdout}\n${version.stderr}`);
-
-    return {
-      provider: KILO_PROVIDER,
-      status: "ready" as const,
-      available: true,
-      authStatus: "unknown" as const,
-      version: parsedVersion,
-      checkedAt,
-      message: "Kilo CLI is installed. Configure provider credentials inside Kilo as needed.",
-    } satisfies ServerProviderStatus;
-  });
-
-export const checkKiloProviderStatus = makeCheckKiloProviderStatus();
-
-// ── Pi health check ─────────────────────────────────────────────
-
-export const checkPiProviderStatus = (
-  agentDir?: string,
-  binaryPath?: string,
-): Effect.Effect<ServerProviderStatus, never, ChildProcessSpawner.ChildProcessSpawner> =>
-  Effect.gen(function* () {
-    const checkedAt = new Date().toISOString();
-    const executable = nonEmptyTrimmed(binaryPath) ?? "pi";
-
-    const versionProbe = yield* probeProviderCliVersion(
-      runPiCommand(["--version"], executable),
-      DEFAULT_TIMEOUT_MS,
-    );
-
-    // Pi itself is SDK-backed in Synara. Keep this CLI probe advisory so health
-    // refreshes do not import the SDK and initialize its native clipboard module.
-    if (versionProbe.outcome === "missing" || versionProbe.outcome === "failure") {
-      const error = versionProbe.cause;
-      return {
-        provider: PI_PROVIDER,
-        status: "warning" as const,
-        available: true,
-        authStatus: "unknown" as const,
-        checkedAt,
-        message:
-          versionProbe.outcome === "missing"
-            ? "Pi SDK is bundled, but the Pi CLI (`pi`) is not on PATH, so Synara could not verify the installed CLI version."
-            : `Pi SDK is bundled, but the CLI health check failed: ${error instanceof Error ? error.message : String(error)}.`,
-      } satisfies ServerProviderStatus;
-    }
-
-    if (versionProbe.outcome === "timeout") {
-      return {
-        provider: PI_PROVIDER,
-        status: "warning" as const,
-        available: true,
-        authStatus: "unknown" as const,
-        checkedAt,
-        message:
-          "Pi SDK is bundled, but the CLI health check timed out before Synara could verify the installed version.",
-      } satisfies ServerProviderStatus;
-    }
-
-    if (versionProbe.outcome === "nonzero") {
-      const version = versionProbe.result;
-      const detail = detailFromResult(version);
-      return {
-        provider: PI_PROVIDER,
-        status: "warning" as const,
-        available: true,
-        authStatus: "unknown" as const,
-        checkedAt,
-        message: detail
-          ? `Pi SDK is bundled, but the CLI health check failed. ${detail}`
-          : "Pi SDK is bundled, but the CLI health check failed.",
-      } satisfies ServerProviderStatus;
-    }
-
-    const version = versionProbe.result;
-    const parsedVersion = parseGenericCliVersion(`${version.stdout}\n${version.stderr}`);
-    const configuredAgentDir = nonEmptyTrimmed(agentDir);
-    return {
-      provider: PI_PROVIDER,
-      status: "ready" as const,
-      available: true,
-      authStatus: "unknown" as const,
-      version: parsedVersion,
-      checkedAt,
-      message: configuredAgentDir
-        ? `Pi CLI is installed. Synara will use Pi agent dir ${configuredAgentDir}.`
-        : "Pi CLI is installed. Configure provider credentials inside Pi as needed.",
-    } satisfies ServerProviderStatus;
-  });
-
-// ── Antigravity CLI health check ──────────────────────────────────
-
-export const checkAntigravityProviderStatus = (
-  binaryPath?: string,
-): Effect.Effect<ServerProviderStatus, never, ChildProcessSpawner.ChildProcessSpawner> =>
-  Effect.gen(function* () {
-    const checkedAt = new Date().toISOString();
-    const executable = nonEmptyTrimmed(binaryPath) ?? "agy";
-    const versionProbe = yield* probeProviderCliVersion(
-      runAntigravityCommand(["--version"], executable),
-      DEFAULT_TIMEOUT_MS,
-    );
-    if (versionProbe.outcome === "missing" || versionProbe.outcome === "failure") {
-      return {
-        provider: ANTIGRAVITY_PROVIDER,
-        status: "error",
-        available: false,
-        authStatus: "unknown",
-        checkedAt,
-        message:
-          versionProbe.outcome === "missing"
-            ? "Antigravity CLI (`agy`) is not installed or is not on PATH."
-            : `Antigravity CLI health check failed: ${String(versionProbe.cause)}`,
-      } satisfies ServerProviderStatus;
-    }
-    if (versionProbe.outcome === "timeout") {
-      return {
-        provider: ANTIGRAVITY_PROVIDER,
-        status: "warning",
-        available: true,
-        authStatus: "unknown",
-        checkedAt,
-        message: "Antigravity CLI version check timed out.",
-      } satisfies ServerProviderStatus;
-    }
-    if (versionProbe.outcome === "nonzero") {
-      const version = versionProbe.result;
-      return {
-        provider: ANTIGRAVITY_PROVIDER,
-        status: "error",
-        available: false,
-        authStatus: "unknown",
-        checkedAt,
-        message: detailFromResult(version) ?? "Antigravity CLI version check failed.",
-      } satisfies ServerProviderStatus;
-    }
-    const version = versionProbe.result;
-    const parsedVersion = parseGenericCliVersion(`${version.stdout}\n${version.stderr}`);
-    if (
-      parsedVersion !== null &&
-      compareSemverVersions(parsedVersion, MINIMUM_ANTIGRAVITY_CLI_VERSION) < 0
-    ) {
-      return {
-        provider: ANTIGRAVITY_PROVIDER,
-        status: "error",
-        available: false,
-        authStatus: "unknown",
-        version: parsedVersion,
-        checkedAt,
-        message: `Antigravity CLI ${parsedVersion} is too old for Synara. Upgrade to ${MINIMUM_ANTIGRAVITY_CLI_VERSION} or newer.`,
-      } satisfies ServerProviderStatus;
-    }
-    const models = yield* runAntigravityCommand(["models"], executable).pipe(
-      Effect.timeoutOption(CLAUDE_HEALTH_TIMEOUT_MS),
-      Effect.result,
-    );
-    if (
-      Result.isSuccess(models) &&
-      Option.isSome(models.success) &&
-      models.success.value.code === 0 &&
-      models.success.value.stdout.trim().length > 0
-    ) {
-      return {
-        provider: ANTIGRAVITY_PROVIDER,
-        status: "ready",
-        available: true,
-        authStatus: "authenticated",
-        version: parsedVersion,
-        checkedAt,
-        message: "Antigravity CLI is installed, authenticated, and returned available models.",
-      } satisfies ServerProviderStatus;
-    }
-    return {
-      provider: ANTIGRAVITY_PROVIDER,
-      status: "warning",
-      available: true,
-      authStatus: "unknown",
-      version: parsedVersion,
-      checkedAt,
-      message: "Antigravity CLI is installed, but Synara could not verify login by listing models.",
-    } satisfies ServerProviderStatus;
-  });
 
 // ── Cursor health check ─────────────────────────────────────────────
 
@@ -2140,18 +1726,10 @@ export function makeProviderHealthLive(options?: { readonly providerUpdateTimeou
             return settings.providers.claudeAgent.binaryPath;
           case "cursor":
             return settings.providers.cursor.binaryPath;
-          case "antigravity":
-            return settings.providers.antigravity.binaryPath;
           case "grok":
             return settings.providers.grok.binaryPath;
-          case "droid":
-            return settings.providers.droid.binaryPath;
-          case "kilo":
-            return settings.providers.kilo.binaryPath;
           case "opencode":
             return settings.providers.opencode.binaryPath;
-          case "pi":
-            return settings.providers.pi.binaryPath;
         }
       };
 
@@ -2334,36 +1912,13 @@ export function makeProviderHealthLive(options?: { readonly providerUpdateTimeou
                 ),
                 checkProviderWhenEnabled(
                   settings,
-                  ANTIGRAVITY_PROVIDER,
-                  checkAntigravityProviderStatus(settings.providers.antigravity.binaryPath),
-                ),
-                checkProviderWhenEnabled(
-                  settings,
                   GROK_PROVIDER,
                   makeCheckGrokProviderStatus(settings.providers.grok.binaryPath),
                 ),
                 checkProviderWhenEnabled(
                   settings,
-                  DROID_PROVIDER,
-                  makeCheckDroidProviderStatus(settings.providers.droid.binaryPath),
-                ),
-                checkProviderWhenEnabled(
-                  settings,
-                  KILO_PROVIDER,
-                  makeCheckKiloProviderStatus(settings.providers.kilo.binaryPath),
-                ),
-                checkProviderWhenEnabled(
-                  settings,
                   OPENCODE_PROVIDER,
                   makeCheckOpenCodeProviderStatus(settings.providers.opencode.binaryPath),
-                ),
-                checkProviderWhenEnabled(
-                  settings,
-                  PI_PROVIDER,
-                  checkPiProviderStatus(
-                    settings.providers.pi.agentDir,
-                    settings.providers.pi.binaryPath,
-                  ),
                 ),
               ],
               {

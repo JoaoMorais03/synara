@@ -362,29 +362,29 @@ function makeProviderServiceLayer(
 ) {
   const codex = makeFakeCodexAdapter();
   const claude = makeFakeCodexAdapter("claudeAgent");
-  const antigravity = makeFakeCodexAdapter("antigravity");
-  const droid = makeFakeCodexAdapter("droid", { conversationRollback: "restart-session" });
-  const pi = makeFakeCodexAdapter("pi");
+  const antigravity = makeFakeCodexAdapter("grok");
+  const droid = makeFakeCodexAdapter("cursor", { conversationRollback: "restart-session" });
+  const pi = makeFakeCodexAdapter("opencode");
   const registry: typeof ProviderAdapterRegistry.Service = {
     getByProvider: (provider) =>
       provider === "codex"
         ? Effect.succeed(codex.adapter)
         : provider === "claudeAgent"
           ? Effect.succeed(claude.adapter)
-          : provider === "antigravity"
+          : provider === "grok"
             ? Effect.succeed(antigravity.adapter)
-            : provider === "droid" && providers?.includeRestartRollbackDroid === true
+            : provider === "cursor" && providers?.includeRestartRollbackDroid === true
               ? Effect.succeed(droid.adapter)
-              : provider === "pi" && providers?.includePi === true
+              : provider === "opencode" && providers?.includePi === true
                 ? Effect.succeed(pi.adapter)
                 : Effect.fail(new ProviderUnsupportedError({ provider })),
     listProviders: () =>
       Effect.succeed([
         "codex",
         "claudeAgent",
-        "antigravity",
-        ...(providers?.includeRestartRollbackDroid === true ? (["droid"] as const) : []),
-        ...(providers?.includePi === true ? (["pi"] as const) : []),
+        "grok",
+        ...(providers?.includeRestartRollbackDroid === true ? (["cursor"] as const) : []),
+        ...(providers?.includePi === true ? (["opencode"] as const) : []),
       ] as const),
   };
 
@@ -1054,7 +1054,7 @@ routing.layer("ProviderServiceLive routing", (it) => {
       const threadId = asThreadId("thread-antigravity-interaction-generation");
 
       yield* provider.startSession(threadId, {
-        provider: "antigravity",
+        provider: "grok",
         threadId,
         cwd: "/tmp/project",
         runtimeMode: "approval-required",
@@ -2492,7 +2492,7 @@ restartRollbackRouting.layer("ProviderServiceLive restart-based rollback", (it) 
       const threadId = asThreadId("thread-droid-interaction-generation");
 
       yield* provider.startSession(threadId, {
-        provider: "droid",
+        provider: "cursor",
         threadId,
         cwd: "/tmp/project",
         runtimeMode: "approval-required",
@@ -2546,7 +2546,7 @@ restartRollbackRouting.layer("ProviderServiceLive restart-based rollback", (it) 
       const directory = yield* ProviderSessionDirectory;
       const threadId = asThreadId("thread-droid-restart-rollback");
       const session = yield* provider.startSession(threadId, {
-        provider: "droid",
+        provider: "cursor",
         threadId,
         cwd: "/tmp/project",
         runtimeMode: "full-access",
@@ -2574,7 +2574,7 @@ piInteractionRouting.layer("ProviderServiceLive Pi interaction generation", (it)
       const threadId = asThreadId("thread-pi-interaction-generation");
 
       yield* provider.startSession(threadId, {
-        provider: "pi",
+        provider: "opencode",
         threadId,
         cwd: "/tmp/project",
         runtimeMode: "approval-required",

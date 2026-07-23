@@ -11,12 +11,8 @@ const ProviderDiscoveryKind = Schema.Literals([
   "codex",
   "claudeAgent",
   "cursor",
-  "antigravity",
   "grok",
-  "droid",
-  "kilo",
   "opencode",
-  "pi",
 ]);
 
 export const ProviderSkillInterface = Schema.Struct({

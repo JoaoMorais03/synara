@@ -98,7 +98,6 @@ export function ModelsSettingsPanel({
 
   const {
     customCodexModels,
-    customKiloModels,
     customOpenCodeModels,
     textGenerationModel,
     textGenerationProvider,
@@ -125,23 +124,19 @@ export function ModelsSettingsPanel({
       getGitTextGenerationModelOptions(
         {
           customCodexModels,
-          customKiloModels,
           customOpenCodeModels,
           textGenerationModel,
           textGenerationProvider,
         },
         {
           codex: gitWritingCatalogOptionsByProvider.codex,
-          kilo: gitWritingCatalogOptionsByProvider.kilo,
           opencode: gitWritingCatalogOptionsByProvider.opencode,
         },
       ),
     [
       customCodexModels,
-      customKiloModels,
       customOpenCodeModels,
       gitWritingCatalogOptionsByProvider.codex,
-      gitWritingCatalogOptionsByProvider.kilo,
       gitWritingCatalogOptionsByProvider.opencode,
       textGenerationModel,
       textGenerationProvider,

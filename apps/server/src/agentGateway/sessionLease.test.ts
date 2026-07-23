@@ -60,7 +60,7 @@ describe("AgentGatewaySessionLease", () => {
 
   it("does not acquire a credential when the gateway layer is absent", () => {
     expect(
-      acquireAgentGatewaySessionLease(undefined, ThreadId.makeUnsafe("thread-1"), "droid"),
+      acquireAgentGatewaySessionLease(undefined, ThreadId.makeUnsafe("thread-1"), "cursor"),
     ).toBeUndefined();
   });
 
@@ -140,7 +140,7 @@ describe("AgentGatewaySessionLease", () => {
         revokeSessionToken,
       },
       ThreadId.makeUnsafe("thread-1"),
-      "pi",
+      "opencode",
     );
 
     await Effect.runPromise(

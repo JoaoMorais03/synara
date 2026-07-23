@@ -66,7 +66,6 @@ interface UseKanbanTaskComposerDiscoveryInput {
   readonly providerOptionsForDispatch: ProviderStartOptions | undefined;
   readonly hiddenProviders: readonly ProviderKind[];
   readonly providerOrder: readonly ProviderKind[];
-  readonly piAgentDir: string | null;
 }
 
 export function useKanbanTaskComposerDiscovery(input: UseKanbanTaskComposerDiscoveryInput): {
@@ -88,7 +87,6 @@ export function useKanbanTaskComposerDiscovery(input: UseKanbanTaskComposerDisco
     providerOptionsForDispatch,
     hiddenProviders,
     providerOrder,
-    piAgentDir,
   } = input;
 
   const platform = typeof navigator === "undefined" ? "" : navigator.platform;
@@ -125,36 +123,29 @@ export function useKanbanTaskComposerDiscovery(input: UseKanbanTaskComposerDisco
       binaryPath:
         (selectedProvider === "opencode"
           ? providerOptionsForDispatch?.opencode?.binaryPath
-          : selectedProvider === "kilo"
-            ? providerOptionsForDispatch?.kilo?.binaryPath
             : null) ?? null,
       serverUrl:
         (selectedProvider === "opencode"
           ? providerOptionsForDispatch?.opencode?.serverUrl
-          : selectedProvider === "kilo"
-            ? providerOptionsForDispatch?.kilo?.serverUrl
             : null) ?? null,
       experimentalWebSockets:
         selectedProvider === "opencode"
           ? providerOptionsForDispatch?.opencode?.experimentalWebSockets
           : undefined,
-      agentDir: selectedProvider === "pi" ? piAgentDir : null,
       enabled:
         (composerTriggerKind === "slash-command" || composerTriggerKind === "slash-model") &&
         supportsNativeSlashCommandDiscovery(providerComposerCapabilitiesQuery.data) &&
         composerSkillCwd !== null,
     }),
   );
-  const canDiscoverProviderSkills =
-    selectedProvider === "pi" || supportsSkillDiscovery(providerComposerCapabilitiesQuery.data);
+  const canDiscoverProviderSkills = supportsSkillDiscovery(providerComposerCapabilitiesQuery.data);
   const providerSkillsQuery = useQuery(
     providerSkillsQueryOptions({
       provider: selectedProvider,
       cwd: composerSkillCwd,
       threadId: scratchThreadId,
-      agentDir: selectedProvider === "pi" ? piAgentDir : null,
       enabled:
-        (isSkillTrigger || composerTriggerKind === "slash-command" || selectedProvider === "pi") &&
+        (isSkillTrigger || composerTriggerKind === "slash-command") &&
         canDiscoverProviderSkills &&
         composerSkillCwd !== null,
     }),

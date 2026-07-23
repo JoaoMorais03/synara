@@ -82,7 +82,6 @@ describe("ServerSettingsService", () => {
         yield* service.start;
         const view = yield* service.updateSettingsView({
           providers: {
-            kilo: { serverPassword: "kilo-secret" },
             opencode: { serverPassword: "opencode-secret" },
           },
         });
@@ -92,16 +91,11 @@ describe("ServerSettingsService", () => {
       }),
     );
 
-    expect(result.internal.providers.kilo.serverPasswordConfigured).toBe(true);
     expect(result.internal.providers.opencode.serverPasswordConfigured).toBe(true);
-    expect(result.view.providers.kilo).toMatchObject({ serverPasswordConfigured: true });
     expect(result.view.providers.opencode).toMatchObject({ serverPasswordConfigured: true });
-    expect(JSON.stringify(result.internal)).not.toContain("kilo-secret");
     expect(JSON.stringify(result.internal)).not.toContain("opencode-secret");
-    expect(JSON.stringify(result.view)).not.toContain("kilo-secret");
     expect(JSON.stringify(result.view)).not.toContain("opencode-secret");
     expect(JSON.stringify(result.view)).not.toContain('"serverPassword"');
-    expect(result.persisted).not.toContain("kilo-secret");
     expect(result.persisted).not.toContain("opencode-secret");
   });
 
@@ -114,11 +108,11 @@ describe("ServerSettingsService", () => {
         Effect.provide(
           ServerSettingsService.layerTest({
             textGenerationModelSelection: {
-              provider: "antigravity",
-              model: DEFAULT_MODEL_BY_PROVIDER.antigravity,
+              provider: "grok",
+              model: DEFAULT_MODEL_BY_PROVIDER.grok,
             },
             providers: {
-              antigravity: { enabled: false },
+              grok: { enabled: false },
             },
           }),
         ),

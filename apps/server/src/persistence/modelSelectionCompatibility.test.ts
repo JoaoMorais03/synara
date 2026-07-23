@@ -7,98 +7,35 @@ import { assert, it } from "@effect/vitest";
 
 import { normalizePersistedModelSelection } from "./modelSelectionCompatibility.ts";
 
-it("preserves canonical Pi model selections", () => {
-  assert.deepEqual(normalizePersistedModelSelection({ provider: "pi", model: "openai/gpt-5.5" }), {
-    provider: "pi",
+it("preserves canonical OpenCode model selections", () => {
+  assert.deepEqual(normalizePersistedModelSelection({ provider: "opencode", model: "openai/gpt-5.5" }), {
+    provider: "opencode",
     model: "openai/gpt-5.5",
   });
 });
 
-it("migrates combined Antigravity model and effort labels", () => {
+it("infers OpenCode from persisted instance labels", () => {
   assert.deepEqual(
     normalizePersistedModelSelection({
-      provider: "antigravity",
-      model: "Gemini 3.5 Flash (High)",
-    }),
-    {
-      provider: "antigravity",
-      model: "Gemini 3.5 Flash",
-      options: { reasoningEffort: "high" },
-    },
-  );
-});
-
-it("infers Antigravity from persisted instance labels", () => {
-  assert.deepEqual(
-    normalizePersistedModelSelection({
-      instanceId: "Antigravity CLI",
-      model: "Claude Sonnet 4.6 (Thinking)",
-    }),
-    {
-      provider: "antigravity",
-      model: "Claude Sonnet 4.6",
-      options: { reasoningEffort: "thinking" },
-    },
-  );
-});
-
-it("prefers an explicit Antigravity instance over a model vendor in its label", () => {
-  assert.deepEqual(
-    normalizePersistedModelSelection({
-      instanceId: "Antigravity Claude runtime",
-      model: "Claude Sonnet 4.6 (Thinking)",
-    }),
-    {
-      provider: "antigravity",
-      model: "Claude Sonnet 4.6",
-      options: { reasoningEffort: "thinking" },
-    },
-  );
-});
-
-it("migrates known Gemini models without discarding the saved selection", () => {
-  assert.deepEqual(
-    normalizePersistedModelSelection({
-      provider: "gemini",
-      model: "gemini-3.1-pro-preview",
-    }),
-    {
-      provider: "antigravity",
-      model: "Gemini 3.1 Pro",
-    },
-  );
-});
-
-it("preserves unknown Gemini models as custom Antigravity selections", () => {
-  assert.deepEqual(
-    normalizePersistedModelSelection({
-      provider: "gemini",
-      model: "gemini-custom-preview",
-    }),
-    {
-      provider: "antigravity",
-      model: "gemini-custom-preview",
-    },
-  );
-});
-
-it("infers Pi from persisted instance labels", () => {
-  assert.deepEqual(
-    normalizePersistedModelSelection({
-      instanceId: "local-pi-runtime-instance",
+      instanceId: "local-opencode-runtime-instance",
       model: "openai/gpt-5.5",
     }),
     {
-      provider: "pi",
+      provider: "opencode",
       model: "openai/gpt-5.5",
     },
   );
 });
 
-it("infers Droid only for Factory-exclusive provider-less model slugs", () => {
-  assert.deepEqual(normalizePersistedModelSelection({ model: "minimax-m3" }), {
-    provider: "droid",
-    model: "minimax-m3",
+it("normalizes legacy option rows", () => {
+  assert.deepEqual(normalizePersistedModelSelection({
+    provider: "codex",
+    model: "gpt-5.5",
+    options: [{ id: "reasoningEffort", value: "high" }],
+  }), {
+    provider: "codex",
+    model: "gpt-5.5",
+    options: { reasoningEffort: "high" },
   });
 });
 

@@ -27,8 +27,7 @@ export function applyServerSettingsPatch(
   const model =
     selectionPatch.model ??
     (selectionPatch.provider &&
-    selectionPatch.provider !== "pi" &&
-    selectionPatch.provider !== current.textGenerationModelSelection.provider
+selectionPatch.provider !== current.textGenerationModelSelection.provider
       ? DEFAULT_MODEL_BY_PROVIDER[selectionPatch.provider]
       : current.textGenerationModelSelection.model);
   const options = shouldReplaceTextGenerationModelSelection(selectionPatch)
@@ -62,27 +61,13 @@ export function providerStartOptionsFromServerSettings(
       ...(providers.cursor.binaryPath ? { binaryPath: providers.cursor.binaryPath } : {}),
       ...(providers.cursor.apiEndpoint ? { apiEndpoint: providers.cursor.apiEndpoint } : {}),
     },
-    antigravity: {
-      ...(providers.antigravity.binaryPath ? { binaryPath: providers.antigravity.binaryPath } : {}),
-    },
     grok: {
       ...(providers.grok.binaryPath ? { binaryPath: providers.grok.binaryPath } : {}),
-    },
-    droid: {
-      ...(providers.droid.binaryPath ? { binaryPath: providers.droid.binaryPath } : {}),
-    },
-    kilo: {
-      ...(providers.kilo.binaryPath ? { binaryPath: providers.kilo.binaryPath } : {}),
-      ...(providers.kilo.serverUrl ? { serverUrl: providers.kilo.serverUrl } : {}),
     },
     opencode: {
       ...(providers.opencode.binaryPath ? { binaryPath: providers.opencode.binaryPath } : {}),
       ...(providers.opencode.serverUrl ? { serverUrl: providers.opencode.serverUrl } : {}),
       experimentalWebSockets: providers.opencode.experimentalWebSockets,
-    },
-    pi: {
-      ...(providers.pi.binaryPath ? { binaryPath: providers.pi.binaryPath } : {}),
-      ...(providers.pi.agentDir ? { agentDir: providers.pi.agentDir } : {}),
     },
   };
 }

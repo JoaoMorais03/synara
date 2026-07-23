@@ -146,7 +146,7 @@ export function resolveThreadHandoffModelSelection(input: {
     if (!selection || selection.provider !== input.targetProvider) {
       return false;
     }
-    return input.targetProvider !== "kilo" || selection.model.startsWith("kilo/");
+    return true;
   };
 
   const stickySelection = input.stickyModelSelectionByProvider[input.targetProvider];
@@ -158,7 +158,7 @@ export function resolveThreadHandoffModelSelection(input: {
   }
   const defaultModel = getDefaultModel(input.targetProvider);
   if (!defaultModel) {
-    throw new Error("Select a Pi model before handing off to Pi.");
+    throw new Error(`Select a model before handing off to ${input.targetProvider}.`);
   }
   return {
     provider: input.targetProvider,

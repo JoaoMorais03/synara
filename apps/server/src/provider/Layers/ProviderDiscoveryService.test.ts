@@ -118,7 +118,7 @@ describe("ProviderDiscoveryService.listSkills", () => {
   it("serves the unified catalog for providers without native skill discovery", async () => {
     await writeSkill(path.join(baseDir, "skills", "portable"), "portable");
 
-    const result = await runListSkills({ adapter: {}, provider: "antigravity" });
+    const result = await runListSkills({ adapter: {}, provider: "grok" });
 
     expect(result.skills.map((skill) => skill.name)).toEqual(["portable"]);
   });

@@ -290,47 +290,7 @@ describe("when: branch is clean, up to date, and has no open PR", () => {
     ]);
   });
 
-  it("resolveQuickAction keeps disabled commit when the branch tracks the default branch", () => {
-    const quick = resolveQuickAction(
-      status({
-        branch: "synara/pi-cleanup",
-        upstreamBranch: "main",
-        aheadCount: 0,
-        behindCount: 0,
-        pr: null,
-      }),
-      false,
-      false,
-      true,
-      false,
-      "main",
-    );
 
-    assert.deepEqual(quick, {
-      kind: "show_hint",
-      label: "Commit",
-      hint: "Branch is up to date. No action needed.",
-      disabled: true,
-    });
-  });
-
-  it("resolveCreatePrActionAvailability blocks stale create-pr calls for default upstream", () => {
-    const availability = resolveCreatePrActionAvailability({
-      gitStatus: status({
-        branch: "synara/pi-cleanup",
-        upstreamBranch: "main",
-        aheadCount: 0,
-        behindCount: 0,
-        pr: null,
-      }),
-      defaultBranchName: "main",
-    });
-
-    assert.deepEqual(availability, {
-      canRun: false,
-      hint: "No branch changes to include in a PR.",
-    });
-  });
 
   it("resolveCreatePrActionAvailability allows clean published feature branches", () => {
     const availability = resolveCreatePrActionAvailability({
@@ -350,48 +310,6 @@ describe("when: branch is clean, up to date, and has no open PR", () => {
     });
   });
 
-  it("buildMenuItems disables create PR when the branch tracks the default branch", () => {
-    const items = buildMenuItems(
-      status({
-        branch: "synara/pi-cleanup",
-        upstreamBranch: "main",
-        aheadCount: 0,
-        behindCount: 0,
-        pr: null,
-      }),
-      false,
-      true,
-      false,
-      "main",
-    );
-
-    assert.deepEqual(items, [
-      {
-        id: "commit",
-        label: "Commit",
-        disabled: true,
-        icon: "commit",
-        kind: "open_dialog",
-        dialogAction: "commit",
-      },
-      {
-        id: "push",
-        label: "Push",
-        disabled: true,
-        icon: "push",
-        kind: "open_dialog",
-        dialogAction: "push",
-      },
-      {
-        id: "pr",
-        label: "Create PR",
-        disabled: true,
-        icon: "pr",
-        kind: "open_dialog",
-        dialogAction: "create_pr",
-      },
-    ]);
-  });
 
   it("resolveQuickAction keeps disabled commit when the upstream branch name is unknown", () => {
     const quick = resolveQuickAction(

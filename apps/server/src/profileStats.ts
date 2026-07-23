@@ -28,12 +28,8 @@ const PROVIDER_KINDS = new Set<ProviderKind>([
   "codex",
   "claudeAgent",
   "cursor",
-  "antigravity",
   "grok",
-  "droid",
-  "kilo",
   "opencode",
-  "pi",
 ]);
 
 type HeatmapCell = ProfileStats["activity"]["heatmap"][number];

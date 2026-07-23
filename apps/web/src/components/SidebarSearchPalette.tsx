@@ -95,7 +95,7 @@ interface SidebarSearchPaletteProps {
 
 export type ImportProviderKind = Extract<
   ProviderKind,
-  "codex" | "claudeAgent" | "cursor" | "kilo" | "opencode"
+  "codex" | "claudeAgent" | "cursor" | "opencode"
 >;
 
 function actionHandler(
@@ -476,9 +476,7 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
       ? "Paste a Claude session id"
       : importProvider === "cursor"
         ? "Paste a Cursor session id"
-        : importProvider === "kilo"
-          ? "Paste a Kilo session id"
-          : importProvider === "opencode"
+        : importProvider === "opencode"
             ? "Paste an OpenCode session id"
             : "Paste a Codex thread id";
 
@@ -638,9 +636,7 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
                         ? "Claude"
                         : provider === "cursor"
                           ? "Cursor"
-                          : provider === "kilo"
-                            ? "Kilo"
-                            : provider === "opencode"
+                          : provider === "opencode"
                               ? "OpenCode"
                               : "Codex"}
                     </Button>
@@ -673,9 +669,7 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
                     ? "Claude resumes a persisted session by session id."
                     : importProvider === "cursor"
                       ? "Cursor resumes a persisted session by session id."
-                      : importProvider === "kilo"
-                        ? "Kilo resumes a persisted session by session id."
-                        : importProvider === "opencode"
+                      : importProvider === "opencode"
                           ? "OpenCode resumes a persisted session by session id."
                           : "Codex resumes a persisted thread by thread id."}
                 </p>

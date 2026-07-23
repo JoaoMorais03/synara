@@ -24,10 +24,8 @@ import {
   type OpenCodeRuntimeShape,
 } from "../opencodeRuntime.ts";
 import { OpenCodeAdapter } from "../Services/OpenCodeAdapter.ts";
-import { KiloAdapter } from "../Services/KiloAdapter.ts";
 import {
   makeOpenCodeAdapterLive,
-  makeKiloAdapterLive,
   normalizeOpenCodeTokenUsage,
 } from "./OpenCodeAdapter.ts";
 
@@ -912,41 +910,6 @@ describe("OpenCodeAdapter runtime lifecycle", () => {
     expect(gateway.revoked).toEqual(["gateway-token-1"]);
     expect(gateway.ownerByToken.size).toBe(0);
     expect(JSON.stringify(runtime.promptCalls[0])).toContain("Synara MCP control is unavailable");
-  });
-
-  it("applies the same isolated gateway lifecycle to managed Kilo sessions", async () => {
-    const runtime = createMockOpenCodeRuntime();
-    const gateway = makeGatewayCredentials();
-    const threadId = asThreadId("thread-kilo-gateway");
-
-    await Effect.runPromise(
-      Effect.gen(function* () {
-        const adapter = yield* KiloAdapter;
-        yield* adapter.startSession({
-          provider: "kilo",
-          threadId,
-          runtimeMode: "full-access",
-          cwd: "/repo",
-        });
-        yield* adapter.stopSession(threadId);
-      }).pipe(
-        Effect.provide(
-          makeKiloAdapterLive({ runtime: runtime.runtime }).pipe(
-            Layer.provide(Layer.succeed(AgentGatewayCredentials, gateway.credentials)),
-            Layer.provideMerge(
-              ServerConfig.layerTest(process.cwd(), { prefix: "kilo-adapter-test-" }),
-            ),
-            Layer.provideMerge(NodeServices.layer),
-          ),
-        ),
-      ),
-    );
-
-    expect(runtime.connectCalls[0]?.poolIsolationKey).toBeTruthy();
-    expect(runtime.mcpAddCalls[0]?.config).toMatchObject({
-      headers: { Authorization: "Bearer gateway-token-1" },
-    });
-    expect(gateway.revoked).toEqual(["gateway-token-1"]);
   });
 
   it("revokes a managed gateway lease exactly once when the server exits unexpectedly", async () => {

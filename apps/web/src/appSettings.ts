@@ -108,12 +108,9 @@ type CustomModelSettingsKey =
   | "customCodexModels"
   | "customClaudeModels"
   | "customCursorModels"
-  | "customAntigravityModels"
   | "customGrokModels"
-  | "customDroidModels"
-  | "customKiloModels"
   | "customOpenCodeModels"
-  | "customPiModels";
+;
 export type ProviderCustomModelConfig = {
   provider: ProviderKind;
   settingsKey: CustomModelSettingsKey;
@@ -128,12 +125,8 @@ const BUILT_IN_MODEL_SLUGS_BY_PROVIDER: Record<ProviderKind, ReadonlySet<string>
   codex: new Set(getModelOptions("codex").map((option) => option.slug)),
   claudeAgent: new Set(getModelOptions("claudeAgent").map((option) => option.slug)),
   cursor: new Set(getModelOptions("cursor").map((option) => option.slug)),
-  antigravity: new Set(getModelOptions("antigravity").map((option) => option.slug)),
   grok: new Set(getModelOptions("grok").map((option) => option.slug)),
-  droid: new Set(getModelOptions("droid").map((option) => option.slug)),
-  kilo: new Set(getModelOptions("kilo").map((option) => option.slug)),
   opencode: new Set(getModelOptions("opencode").map((option) => option.slug)),
-  pi: new Set(getModelOptions("pi").map((option) => option.slug)),
 };
 
 const withDefaults =
@@ -149,26 +142,7 @@ const withDefaults =
       Schema.withDecodingDefault(() => fallback()),
     );
 
-const PersistedProviderKind = Schema.Literals([
-  "codex",
-  "claudeAgent",
-  "cursor",
-  "antigravity",
-  "gemini",
-  "grok",
-  "droid",
-  "kilo",
-  "opencode",
-  "pi",
-]).pipe(
-  Schema.decodeTo(
-    ProviderKind,
-    SchemaTransformation.transform({
-      decode: (provider) => (provider === "gemini" ? "antigravity" : provider),
-      encode: (provider) => provider,
-    }),
-  ),
-);
+const PersistedProviderKind = ProviderKind;
 
 export const AppSettingsSchema = Schema.Struct({
   claudeBinaryPath: Schema.String.check(Schema.isMaxLength(4096)).pipe(withDefaults(() => "")),
@@ -183,18 +157,8 @@ export const AppSettingsSchema = Schema.Struct({
   codexHomePath: Schema.String.check(Schema.isMaxLength(4096)).pipe(withDefaults(() => "")),
   cursorBinaryPath: Schema.String.check(Schema.isMaxLength(4096)).pipe(withDefaults(() => "")),
   cursorApiEndpoint: Schema.String.check(Schema.isMaxLength(4096)).pipe(withDefaults(() => "")),
-  antigravityBinaryPath: Schema.String.check(Schema.isMaxLength(4096)).pipe(withDefaults(() => "")),
-  // Deprecated Gemini keys remain decodable until normalization rewrites local storage.
-  geminiBinaryPath: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(4096))),
   grokBinaryPath: Schema.String.check(Schema.isMaxLength(4096)).pipe(withDefaults(() => "")),
-  droidBinaryPath: Schema.String.check(Schema.isMaxLength(4096)).pipe(withDefaults(() => "")),
-  kiloBinaryPath: Schema.String.check(Schema.isMaxLength(4096)).pipe(withDefaults(() => "")),
-  kiloServerUrl: Schema.String.check(Schema.isMaxLength(4096)).pipe(withDefaults(() => "")),
-  kiloServerPassword: Schema.String.check(Schema.isMaxLength(4096)).pipe(withDefaults(() => "")),
-  kiloServerPasswordConfigured: Schema.Boolean.pipe(withDefaults(() => false)),
   openCodeBinaryPath: Schema.String.check(Schema.isMaxLength(4096)).pipe(withDefaults(() => "")),
-  piBinaryPath: Schema.String.check(Schema.isMaxLength(4096)).pipe(withDefaults(() => "")),
-  piAgentDir: Schema.String.check(Schema.isMaxLength(4096)).pipe(withDefaults(() => "")),
   openCodeServerUrl: Schema.String.check(Schema.isMaxLength(4096)).pipe(withDefaults(() => "")),
   openCodeServerPassword: Schema.String.check(Schema.isMaxLength(4096)).pipe(
     withDefaults(() => ""),
@@ -252,13 +216,8 @@ export const AppSettingsSchema = Schema.Struct({
   customCodexModels: Schema.Array(Schema.String).pipe(withDefaults(() => [])),
   customClaudeModels: Schema.Array(Schema.String).pipe(withDefaults(() => [])),
   customCursorModels: Schema.Array(Schema.String).pipe(withDefaults(() => [])),
-  customAntigravityModels: Schema.Array(Schema.String).pipe(withDefaults(() => [])),
-  customGeminiModels: Schema.optionalKey(Schema.Array(Schema.String)),
   customGrokModels: Schema.Array(Schema.String).pipe(withDefaults(() => [])),
-  customDroidModels: Schema.Array(Schema.String).pipe(withDefaults(() => [])),
-  customKiloModels: Schema.Array(Schema.String).pipe(withDefaults(() => [])),
   customOpenCodeModels: Schema.Array(Schema.String).pipe(withDefaults(() => [])),
-  customPiModels: Schema.Array(Schema.String).pipe(withDefaults(() => [])),
   textGenerationProvider: PersistedProviderKind.pipe(withDefaults(() => "codex" as const)),
   textGenerationModel: Schema.optional(TrimmedNonEmptyString),
   uiFontFamily: Schema.String.check(Schema.isMaxLength(256)).pipe(withDefaults(() => "")),
@@ -342,15 +301,6 @@ const PROVIDER_CUSTOM_MODEL_CONFIG: Record<ProviderKind, ProviderCustomModelConf
     placeholder: "cursor-model-slug",
     example: "composer-2",
   },
-  antigravity: {
-    provider: "antigravity",
-    settingsKey: "customAntigravityModels",
-    defaultSettingsKey: "customAntigravityModels",
-    title: "Antigravity",
-    description: "Save additional Antigravity CLI base model names for the picker.",
-    placeholder: "Model Name",
-    example: "Gemini 4 Pro",
-  },
   grok: {
     provider: "grok",
     settingsKey: "customGrokModels",
@@ -359,24 +309,6 @@ const PROVIDER_CUSTOM_MODEL_CONFIG: Record<ProviderKind, ProviderCustomModelConf
     description: "Save additional Grok model slugs for the picker and `/model` command.",
     placeholder: "your-grok-model-slug",
     example: "grok-build-0.1",
-  },
-  droid: {
-    provider: "droid",
-    settingsKey: "customDroidModels",
-    defaultSettingsKey: "customDroidModels",
-    title: "Droid",
-    description: "Save additional Droid model slugs for the picker and `/model` command.",
-    placeholder: "your-droid-model-slug",
-    example: "claude-opus-4-8",
-  },
-  kilo: {
-    provider: "kilo",
-    settingsKey: "customKiloModels",
-    defaultSettingsKey: "customKiloModels",
-    title: "Kilo",
-    description: "Save additional Kilo model slugs for the picker and provider runtime.",
-    placeholder: "provider/model",
-    example: "kilo/kilo-auto/free",
   },
   opencode: {
     provider: "opencode",
@@ -387,24 +319,11 @@ const PROVIDER_CUSTOM_MODEL_CONFIG: Record<ProviderKind, ProviderCustomModelConf
     placeholder: "provider/model",
     example: "openai/gpt-5",
   },
-  pi: {
-    provider: "pi",
-    settingsKey: "customPiModels",
-    defaultSettingsKey: "customPiModels",
-    title: "Pi",
-    description: "Save additional Pi model slugs for the picker and provider runtime.",
-    placeholder: "provider/model",
-    example: "anthropic/claude-sonnet-4-5",
-  },
 };
 
 export const MODEL_PROVIDER_SETTINGS = Object.values(PROVIDER_CUSTOM_MODEL_CONFIG);
 
-// Droid's ACP catalog is authoritative and rejects unknown slugs. Preserve its
-// persisted config for compatibility, but do not offer an editor it cannot honor.
-export const CUSTOM_MODEL_EDITOR_PROVIDER_SETTINGS = MODEL_PROVIDER_SETTINGS.filter(
-  (config) => config.provider !== "droid",
-);
+export const CUSTOM_MODEL_EDITOR_PROVIDER_SETTINGS = MODEL_PROVIDER_SETTINGS;
 
 export function normalizeCustomModelSlugs(
   models: Iterable<string | null | undefined>,
@@ -502,8 +421,6 @@ function normalizeProviderBinaryPathOverride(
 function normalizeAppSettings(settings: AppSettings): AppSettings {
   const {
     enableAppshots: legacyEnableAppshots,
-    geminiBinaryPath: legacyGeminiBinaryPath,
-    customGeminiModels: legacyCustomGeminiModels,
     ...currentSettings
   } = settings;
   return {
@@ -511,23 +428,15 @@ function normalizeAppSettings(settings: AppSettings): AppSettings {
     enableAppSnap: settings.enableAppSnap || legacyEnableAppshots === true,
     // Password fields are accepted only as write-only update patches. Never retain
     // reusable provider credentials in browser state or localStorage.
-    kiloServerPassword: "",
     openCodeServerPassword: "",
     claudeBinaryPath: normalizeProviderBinaryPathOverride("claudeAgent", settings.claudeBinaryPath),
     codexBinaryPath: normalizeProviderBinaryPathOverride("codex", settings.codexBinaryPath),
     cursorBinaryPath: normalizeProviderBinaryPathOverride("cursor", settings.cursorBinaryPath),
-    antigravityBinaryPath: normalizeProviderBinaryPathOverride(
-      "antigravity",
-      settings.antigravityBinaryPath || legacyGeminiBinaryPath,
-    ),
     grokBinaryPath: normalizeProviderBinaryPathOverride("grok", settings.grokBinaryPath),
-    droidBinaryPath: normalizeProviderBinaryPathOverride("droid", settings.droidBinaryPath),
-    kiloBinaryPath: normalizeProviderBinaryPathOverride("kilo", settings.kiloBinaryPath),
     openCodeBinaryPath: normalizeProviderBinaryPathOverride(
       "opencode",
       settings.openCodeBinaryPath,
     ),
-    piBinaryPath: normalizeProviderBinaryPathOverride("pi", settings.piBinaryPath),
     uiDensity: normalizeUiDensityValue(settings.uiDensity),
     chatFontSizePx: normalizeChatFontSizePx(settings.chatFontSizePx),
     terminalFontSizePx: normalizeTerminalFontSizePx(settings.terminalFontSizePx),
@@ -535,15 +444,8 @@ function normalizeAppSettings(settings: AppSettings): AppSettings {
     customCodexModels: normalizeCustomModelSlugs(settings.customCodexModels, "codex"),
     customClaudeModels: normalizeCustomModelSlugs(settings.customClaudeModels, "claudeAgent"),
     customCursorModels: normalizeCustomModelSlugs(settings.customCursorModels, "cursor"),
-    customAntigravityModels: normalizeCustomModelSlugs(
-      [...settings.customAntigravityModels, ...(legacyCustomGeminiModels ?? [])],
-      "antigravity",
-    ),
     customGrokModels: normalizeCustomModelSlugs(settings.customGrokModels, "grok"),
-    customDroidModels: normalizeCustomModelSlugs(settings.customDroidModels, "droid"),
-    customKiloModels: normalizeCustomModelSlugs(settings.customKiloModels, "kilo"),
     customOpenCodeModels: normalizeCustomModelSlugs(settings.customOpenCodeModels, "opencode"),
-    customPiModels: normalizeCustomModelSlugs(settings.customPiModels, "pi"),
     hiddenProviders: normalizeHiddenProviders(settings.hiddenProviders),
     providerOrder: normalizeProviderOrder(settings.providerOrder),
     hiddenModels: [],
@@ -560,27 +462,16 @@ function serverSettingsToAppSettings(settings: ServerSettingsView): Partial<AppS
     defaultThreadEnvMode: settings.defaultThreadEnvMode,
     enableAssistantStreaming: settings.enableAssistantStreaming,
     enableProviderUpdateChecks: settings.enableProviderUpdateChecks,
-    antigravityBinaryPath: settings.providers.antigravity.binaryPath,
     grokBinaryPath: settings.providers.grok.binaryPath,
-    droidBinaryPath: settings.providers.droid.binaryPath,
-    kiloBinaryPath: settings.providers.kilo.binaryPath,
-    kiloServerPasswordConfigured: settings.providers.kilo.serverPasswordConfigured,
-    kiloServerUrl: settings.providers.kilo.serverUrl,
     openCodeBinaryPath: settings.providers.opencode.binaryPath,
     openCodeExperimentalWebSockets: settings.providers.opencode.experimentalWebSockets,
     openCodeServerPasswordConfigured: settings.providers.opencode.serverPasswordConfigured,
     openCodeServerUrl: settings.providers.opencode.serverUrl,
-    piAgentDir: settings.providers.pi.agentDir,
-    piBinaryPath: settings.providers.pi.binaryPath,
     customCodexModels: settings.providers.codex.customModels,
     customClaudeModels: settings.providers.claudeAgent.customModels,
     customCursorModels: settings.providers.cursor.customModels,
-    customAntigravityModels: settings.providers.antigravity.customModels,
     customGrokModels: settings.providers.grok.customModels,
-    customDroidModels: settings.providers.droid.customModels,
-    customKiloModels: settings.providers.kilo.customModels,
     customOpenCodeModels: settings.providers.opencode.customModels,
-    customPiModels: settings.providers.pi.customModels,
     textGenerationProvider: settings.textGenerationModelSelection.provider,
     textGenerationModel: settings.textGenerationModelSelection.model,
   };
@@ -603,14 +494,10 @@ function hasOwn<Key extends keyof AppSettings>(patch: Partial<AppSettings>, key:
 
 function touchesProviderDiscoverySettings(patch: Partial<AppSettings>): boolean {
   return (
-    hasOwn(patch, "kiloBinaryPath") ||
-    hasOwn(patch, "kiloServerPassword") ||
-    hasOwn(patch, "kiloServerUrl") ||
     hasOwn(patch, "openCodeBinaryPath") ||
     hasOwn(patch, "openCodeExperimentalWebSockets") ||
     hasOwn(patch, "openCodeServerPassword") ||
-    hasOwn(patch, "openCodeServerUrl") ||
-    hasOwn(patch, "piAgentDir")
+    hasOwn(patch, "openCodeServerUrl")
   );
 }
 
@@ -674,43 +561,10 @@ function appSettingsPatchToServerSettingsPatch(patch: Partial<AppSettings>): Ser
         : {}),
     };
   }
-  if (hasOwn(patch, "antigravityBinaryPath") || hasOwn(patch, "customAntigravityModels")) {
-    providers.antigravity = {
-      ...(hasOwn(patch, "antigravityBinaryPath")
-        ? { binaryPath: patch.antigravityBinaryPath ?? "" }
-        : {}),
-      ...(hasOwn(patch, "customAntigravityModels")
-        ? { customModels: patch.customAntigravityModels ?? [] }
-        : {}),
-    };
-  }
   if (hasOwn(patch, "grokBinaryPath") || hasOwn(patch, "customGrokModels")) {
     providers.grok = {
       ...(hasOwn(patch, "grokBinaryPath") ? { binaryPath: patch.grokBinaryPath ?? "" } : {}),
       ...(hasOwn(patch, "customGrokModels") ? { customModels: patch.customGrokModels ?? [] } : {}),
-    };
-  }
-  if (hasOwn(patch, "droidBinaryPath") || hasOwn(patch, "customDroidModels")) {
-    providers.droid = {
-      ...(hasOwn(patch, "droidBinaryPath") ? { binaryPath: patch.droidBinaryPath ?? "" } : {}),
-      ...(hasOwn(patch, "customDroidModels")
-        ? { customModels: patch.customDroidModels ?? [] }
-        : {}),
-    };
-  }
-  if (
-    hasOwn(patch, "kiloBinaryPath") ||
-    hasOwn(patch, "kiloServerUrl") ||
-    hasOwn(patch, "kiloServerPassword") ||
-    hasOwn(patch, "customKiloModels")
-  ) {
-    providers.kilo = {
-      ...(hasOwn(patch, "kiloBinaryPath") ? { binaryPath: patch.kiloBinaryPath ?? "" } : {}),
-      ...(hasOwn(patch, "kiloServerUrl") ? { serverUrl: patch.kiloServerUrl ?? "" } : {}),
-      ...(hasOwn(patch, "kiloServerPassword")
-        ? { serverPassword: patch.kiloServerPassword ?? "" }
-        : {}),
-      ...(hasOwn(patch, "customKiloModels") ? { customModels: patch.customKiloModels ?? [] } : {}),
     };
   }
   if (
@@ -736,17 +590,7 @@ function appSettingsPatchToServerSettingsPatch(patch: Partial<AppSettings>): Ser
         : {}),
     };
   }
-  if (
-    hasOwn(patch, "piAgentDir") ||
-    hasOwn(patch, "piBinaryPath") ||
-    hasOwn(patch, "customPiModels")
-  ) {
-    providers.pi = {
-      ...(hasOwn(patch, "piAgentDir") ? { agentDir: patch.piAgentDir ?? "" } : {}),
-      ...(hasOwn(patch, "piBinaryPath") ? { binaryPath: patch.piBinaryPath ?? "" } : {}),
-      ...(hasOwn(patch, "customPiModels") ? { customModels: patch.customPiModels ?? [] } : {}),
-    };
-  }
+
 
   if (Object.keys(providers).length > 0) {
     serverPatch.providers = providers;
@@ -772,18 +616,11 @@ function buildInitialServerSettingsMigrationPatch(settings: AppSettings): Server
     "defaultThreadEnvMode",
     "enableAssistantStreaming",
     "enableProviderUpdateChecks",
-    "antigravityBinaryPath",
     "grokBinaryPath",
-    "droidBinaryPath",
-    "kiloBinaryPath",
-    "kiloServerPassword",
-    "kiloServerUrl",
     "openCodeBinaryPath",
     "openCodeExperimentalWebSockets",
     "openCodeServerPassword",
     "openCodeServerUrl",
-    "piAgentDir",
-    "piBinaryPath",
     "textGenerationModel",
     "textGenerationProvider",
   ] as const) {
@@ -792,11 +629,6 @@ function buildInitialServerSettingsMigrationPatch(settings: AppSettings): Server
     }
   }
 
-  // Migrate legacy browser-stored passwords once before normalizeAppSettings
-  // scrubs them from local state. All subsequent reads use redacted server views.
-  if (settings.kiloServerPassword.trim()) {
-    patch.kiloServerPassword = settings.kiloServerPassword;
-  }
   if (settings.openCodeServerPassword.trim()) {
     patch.openCodeServerPassword = settings.openCodeServerPassword;
   }
@@ -805,12 +637,8 @@ function buildInitialServerSettingsMigrationPatch(settings: AppSettings): Server
     "customCodexModels",
     "customClaudeModels",
     "customCursorModels",
-    "customAntigravityModels",
     "customGrokModels",
-    "customDroidModels",
-    "customKiloModels",
     "customOpenCodeModels",
-    "customPiModels",
   ] as const) {
     if (normalizedSettings[key].length > 0) {
       patch[key] = normalizedSettings[key] as never;
@@ -854,12 +682,8 @@ export function getCustomModelsByProvider(
     codex: getCustomModelsForProvider(settings, "codex"),
     claudeAgent: getCustomModelsForProvider(settings, "claudeAgent"),
     cursor: getCustomModelsForProvider(settings, "cursor"),
-    antigravity: getCustomModelsForProvider(settings, "antigravity"),
     grok: getCustomModelsForProvider(settings, "grok"),
-    droid: getCustomModelsForProvider(settings, "droid"),
-    kilo: getCustomModelsForProvider(settings, "kilo"),
     opencode: getCustomModelsForProvider(settings, "opencode"),
-    pi: getCustomModelsForProvider(settings, "pi"),
   };
 }
 
@@ -914,7 +738,7 @@ export function getAppModelOptions(
   return options;
 }
 
-type GitTextGenerationDiscoveredProvider = "codex" | "kilo" | "opencode";
+type GitTextGenerationDiscoveredProvider = "codex" | "opencode";
 
 export function mapCatalogModelOptionsToAppModelOptions(
   provider: GitTextGenerationDiscoveredProvider,
@@ -931,8 +755,7 @@ export function getGitTextGenerationModelOptions(
   settings: Pick<
     AppSettings,
     | "customCodexModels"
-    | "customKiloModels"
-    | "customOpenCodeModels"
+      | "customOpenCodeModels"
     | "textGenerationModel"
     | "textGenerationProvider"
   >,
@@ -947,9 +770,6 @@ export function getGitTextGenerationModelOptions(
     ...(discoveredOptionsByProvider?.codex
       ? mapCatalogModelOptionsToAppModelOptions("codex", discoveredOptionsByProvider.codex)
       : getAppModelOptions("codex", settings.customCodexModels)),
-    ...(discoveredOptionsByProvider?.kilo
-      ? mapCatalogModelOptionsToAppModelOptions("kilo", discoveredOptionsByProvider.kilo)
-      : getAppModelOptions("kilo", settings.customKiloModels)),
     ...(discoveredOptionsByProvider?.opencode
       ? mapCatalogModelOptionsToAppModelOptions("opencode", discoveredOptionsByProvider.opencode)
       : getAppModelOptions("opencode", settings.customOpenCodeModels)),
@@ -1002,12 +822,8 @@ export function getCustomModelOptionsByProvider(
     codex: getAppModelOptions("codex", customModelsByProvider.codex),
     claudeAgent: getAppModelOptions("claudeAgent", customModelsByProvider.claudeAgent),
     cursor: getAppModelOptions("cursor", customModelsByProvider.cursor),
-    antigravity: getAppModelOptions("antigravity", customModelsByProvider.antigravity),
     grok: getAppModelOptions("grok", customModelsByProvider.grok),
-    droid: getAppModelOptions("droid", customModelsByProvider.droid),
-    kilo: getAppModelOptions("kilo", customModelsByProvider.kilo),
     opencode: getAppModelOptions("opencode", customModelsByProvider.opencode),
-    pi: getAppModelOptions("pi", customModelsByProvider.pi),
   };
 }
 
@@ -1019,16 +835,10 @@ export function getProviderStartOptions(
     | "codexHomePath"
     | "cursorApiEndpoint"
     | "cursorBinaryPath"
-    | "antigravityBinaryPath"
     | "grokBinaryPath"
-    | "droidBinaryPath"
-    | "kiloBinaryPath"
-    | "kiloServerUrl"
     | "openCodeBinaryPath"
     | "openCodeExperimentalWebSockets"
     | "openCodeServerUrl"
-    | "piAgentDir"
-    | "piBinaryPath"
   >,
 ): ProviderStartOptions | undefined {
   const claudeBinaryPath = normalizeProviderBinaryPathOverride(
@@ -1037,18 +847,11 @@ export function getProviderStartOptions(
   );
   const codexBinaryPath = normalizeProviderBinaryPathOverride("codex", settings.codexBinaryPath);
   const cursorBinaryPath = normalizeProviderBinaryPathOverride("cursor", settings.cursorBinaryPath);
-  const antigravityBinaryPath = normalizeProviderBinaryPathOverride(
-    "antigravity",
-    settings.antigravityBinaryPath,
-  );
   const grokBinaryPath = normalizeProviderBinaryPathOverride("grok", settings.grokBinaryPath);
-  const droidBinaryPath = normalizeProviderBinaryPathOverride("droid", settings.droidBinaryPath);
-  const kiloBinaryPath = normalizeProviderBinaryPathOverride("kilo", settings.kiloBinaryPath);
   const openCodeBinaryPath = normalizeProviderBinaryPathOverride(
     "opencode",
     settings.openCodeBinaryPath,
   );
-  const piBinaryPath = normalizeProviderBinaryPathOverride("pi", settings.piBinaryPath);
   const hasOpenCodeStartOptions = Boolean(
     openCodeBinaryPath || settings.openCodeExperimentalWebSockets || settings.openCodeServerUrl,
   );
@@ -1076,32 +879,10 @@ export function getProviderStartOptions(
           },
         }
       : {}),
-    ...(antigravityBinaryPath
-      ? {
-          antigravity: {
-            binaryPath: antigravityBinaryPath,
-          },
-        }
-      : {}),
     ...(grokBinaryPath
       ? {
           grok: {
             binaryPath: grokBinaryPath,
-          },
-        }
-      : {}),
-    ...(droidBinaryPath
-      ? {
-          droid: {
-            binaryPath: droidBinaryPath,
-          },
-        }
-      : {}),
-    ...(kiloBinaryPath || settings.kiloServerUrl
-      ? {
-          kilo: {
-            ...(kiloBinaryPath ? { binaryPath: kiloBinaryPath } : {}),
-            ...(settings.kiloServerUrl ? { serverUrl: settings.kiloServerUrl } : {}),
           },
         }
       : {}),
@@ -1111,14 +892,6 @@ export function getProviderStartOptions(
             ...(openCodeBinaryPath ? { binaryPath: openCodeBinaryPath } : {}),
             ...(settings.openCodeExperimentalWebSockets ? { experimentalWebSockets: true } : {}),
             ...(settings.openCodeServerUrl ? { serverUrl: settings.openCodeServerUrl } : {}),
-          },
-        }
-      : {}),
-    ...(piBinaryPath || settings.piAgentDir
-      ? {
-          pi: {
-            ...(piBinaryPath ? { binaryPath: piBinaryPath } : {}),
-            ...(settings.piAgentDir ? { agentDir: settings.piAgentDir } : {}),
           },
         }
       : {}),
@@ -1143,12 +916,8 @@ export function getCustomBinaryPathForProvider(
     | "claudeBinaryPath"
     | "codexBinaryPath"
     | "cursorBinaryPath"
-    | "antigravityBinaryPath"
     | "grokBinaryPath"
-    | "droidBinaryPath"
-    | "kiloBinaryPath"
     | "openCodeBinaryPath"
-    | "piBinaryPath"
   >,
   provider: ProviderKind,
 ): string {
@@ -1159,18 +928,10 @@ export function getCustomBinaryPathForProvider(
       return normalizeProviderBinaryPathOverride(provider, settings.claudeBinaryPath);
     case "cursor":
       return normalizeProviderBinaryPathOverride(provider, settings.cursorBinaryPath);
-    case "antigravity":
-      return normalizeProviderBinaryPathOverride(provider, settings.antigravityBinaryPath);
     case "grok":
       return normalizeProviderBinaryPathOverride(provider, settings.grokBinaryPath);
-    case "droid":
-      return normalizeProviderBinaryPathOverride(provider, settings.droidBinaryPath);
-    case "kilo":
-      return normalizeProviderBinaryPathOverride(provider, settings.kiloBinaryPath);
     case "opencode":
       return normalizeProviderBinaryPathOverride(provider, settings.openCodeBinaryPath);
-    case "pi":
-      return normalizeProviderBinaryPathOverride(provider, settings.piBinaryPath);
   }
 }
 
@@ -1237,9 +998,6 @@ export function useAppSettings() {
       normalizeAppSettings({
         ...prev,
         ...patch,
-        ...(hasOwn(patch, "kiloServerPassword")
-          ? { kiloServerPasswordConfigured: Boolean(patch.kiloServerPassword?.trim()) }
-          : {}),
         ...(hasOwn(patch, "openCodeServerPassword")
           ? { openCodeServerPasswordConfigured: Boolean(patch.openCodeServerPassword?.trim()) }
           : {}),

@@ -248,11 +248,11 @@ it.layer(makeDirectoryLayer(SqlitePersistenceMemory))("ProviderSessionDirectoryL
 
       yield* runtimeRepository.upsert({
         threadId: legacyThreadId,
-        providerName: "kilo",
-        adapterKey: "kilo",
+        providerName: "removed-provider",
+        adapterKey: "removed-provider",
         runtimeMode: "full-access",
         status: "running",
-        lifecycleGeneration: "legacy-test-kilo",
+        lifecycleGeneration: "legacy-test-removed-provider",
         lastSeenAt: new Date().toISOString(),
         resumeCursor: null,
         runtimePayload: null,

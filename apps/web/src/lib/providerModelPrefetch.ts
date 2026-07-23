@@ -20,13 +20,8 @@ export type ProviderModelPrefetchSettings = Pick<
   | "defaultProvider"
   | "cursorBinaryPath"
   | "cursorApiEndpoint"
-  | "antigravityBinaryPath"
   | "grokBinaryPath"
-  | "droidBinaryPath"
-  | "kiloBinaryPath"
   | "openCodeBinaryPath"
-  | "piBinaryPath"
-  | "piAgentDir"
 >;
 
 export function resolveNewThreadModelPrefetchProvider(input: {
@@ -79,40 +74,15 @@ export function providerModelsPrefetchQueryOptions(input: {
         binaryPath: settings.cursorBinaryPath || null,
         apiEndpoint: settings.cursorApiEndpoint || null,
       });
-    case "antigravity":
-      return providerModelsQueryOptions({
-        provider: "antigravity",
-        binaryPath: settings.antigravityBinaryPath || null,
-        cwd,
-      });
     case "grok":
       return providerModelsQueryOptions({
         provider: "grok",
         binaryPath: settings.grokBinaryPath || null,
       });
-    case "droid":
-      return providerModelsQueryOptions({
-        provider: "droid",
-        binaryPath: settings.droidBinaryPath || null,
-        cwd,
-      });
-    case "kilo":
-      return providerModelsQueryOptions({
-        provider: "kilo",
-        binaryPath: settings.kiloBinaryPath || null,
-        cwd,
-      });
     case "opencode":
       return providerModelsQueryOptions({
         provider: "opencode",
         binaryPath: settings.openCodeBinaryPath || null,
-        cwd,
-      });
-    case "pi":
-      return providerModelsQueryOptions({
-        provider: "pi",
-        binaryPath: settings.piBinaryPath || null,
-        agentDir: settings.piAgentDir || null,
         cwd,
       });
   }
@@ -131,12 +101,6 @@ function providerAgentsPrefetchQueryOptions(input: {
       return providerAgentsQueryOptions({ provider: "claudeAgent" });
     case "codex":
       return providerAgentsQueryOptions({ provider: "codex" });
-    case "kilo":
-      return providerAgentsQueryOptions({
-        provider: "kilo",
-        binaryPath: settings.kiloBinaryPath || null,
-        cwd,
-      });
     case "opencode":
       return providerAgentsQueryOptions({
         provider: "opencode",
