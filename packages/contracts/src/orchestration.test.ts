@@ -168,48 +168,48 @@ it.effect("preserves thread activity payloads through the RPC JSON codec", () =>
   }),
 );
 
-it.effect("preserves Pi model selections when decoding model selections", () =>
+it.effect("preserves Codex model selections when decoding model selections", () =>
   Effect.gen(function* () {
     const parsed = yield* decodeModelSelection({
-      provider: "pi",
+      provider: "codex",
       model: "openai/gpt-5.5",
     });
 
     assert.deepStrictEqual(parsed, {
-      provider: "pi",
+      provider: "codex",
       model: "openai/gpt-5.5",
     });
   }),
 );
 
-it.effect("preserves Antigravity effort options separately from the model", () =>
+it.effect("preserves Grok effort options separately from the model", () =>
   Effect.gen(function* () {
     const parsed = yield* decodeModelSelection({
-      provider: "antigravity",
+      provider: "grok",
       model: "Gemini 3.5 Flash",
       options: { reasoningEffort: "high" },
     });
 
     assert.deepStrictEqual(parsed, {
-      provider: "antigravity",
+      provider: "grok",
       model: "Gemini 3.5 Flash",
       options: { reasoningEffort: "high" },
     });
   }),
 );
 
-it.effect("preserves Pi model selections through the JSON codec", () =>
+it.effect("preserves Codex model selections through the JSON codec", () =>
   Effect.gen(function* () {
     const codec = Schema.fromJsonString(ModelSelection);
     const parsed = yield* Schema.decodeUnknownEffect(codec)(
       JSON.stringify({
-        provider: "pi",
+        provider: "codex",
         model: "openai/gpt-5.5",
       }),
     );
 
     assert.deepStrictEqual(parsed, {
-      provider: "pi",
+      provider: "codex",
       model: "openai/gpt-5.5",
     });
   }),
@@ -218,11 +218,6 @@ it.effect("preserves Pi model selections through the JSON codec", () =>
 it.effect("drops legacy provider passwords from decoded provider options", () =>
   Effect.gen(function* () {
     const parsed = yield* decodeProviderStartOptions({
-      kilo: {
-        binaryPath: "/custom/bin/kilo",
-        serverUrl: "http://127.0.0.1:4095",
-        serverPassword: "legacy-kilo-secret",
-      },
       opencode: {
         binaryPath: "/custom/bin/opencode",
         serverUrl: "http://127.0.0.1:4096",
@@ -231,10 +226,6 @@ it.effect("drops legacy provider passwords from decoded provider options", () =>
     });
 
     assert.deepStrictEqual(parsed, {
-      kilo: {
-        binaryPath: "/custom/bin/kilo",
-        serverUrl: "http://127.0.0.1:4095",
-      },
       opencode: {
         binaryPath: "/custom/bin/opencode",
         serverUrl: "http://127.0.0.1:4096",

@@ -133,6 +133,7 @@ describe("CheckpointDiffQueryLive", () => {
           getThreadDetailById: () => Effect.die("unused"),
           getThreadDetailForExportById: () => Effect.die("unused"),
           getThreadDetailSnapshotById: () => Effect.die("unused"),
+          listStaleInFlightThreadIds: () => Effect.die("unused"),
         }),
       ),
     );
@@ -231,6 +232,7 @@ describe("CheckpointDiffQueryLive", () => {
           getThreadDetailById: () => Effect.die("unused"),
           getThreadDetailForExportById: () => Effect.die("unused"),
           getThreadDetailSnapshotById: () => Effect.die("unused"),
+          listStaleInFlightThreadIds: () => Effect.die("unused"),
         }),
       ),
     );
@@ -298,6 +300,7 @@ describe("CheckpointDiffQueryLive", () => {
           getThreadDetailById: () => Effect.die("unused"),
           getThreadDetailForExportById: () => Effect.die("unused"),
           getThreadDetailSnapshotById: () => Effect.die("unused"),
+          listStaleInFlightThreadIds: () => Effect.die("unused"),
         }),
       ),
     );
@@ -363,6 +366,7 @@ describe("CheckpointDiffQueryLive", () => {
           getThreadDetailById: () => Effect.die("unused"),
           getThreadDetailForExportById: () => Effect.die("unused"),
           getThreadDetailSnapshotById: () => Effect.die("unused"),
+          listStaleInFlightThreadIds: () => Effect.die("unused"),
         }),
       ),
     );
@@ -429,6 +433,7 @@ describe("CheckpointDiffQueryLive", () => {
           getThreadDetailById: () => Effect.die("unused"),
           getThreadDetailForExportById: () => Effect.die("unused"),
           getThreadDetailSnapshotById: () => Effect.die("unused"),
+          listStaleInFlightThreadIds: () => Effect.die("unused"),
         }),
       ),
     );
@@ -500,6 +505,7 @@ describe("CheckpointDiffQueryLive", () => {
           getThreadDetailById: () => Effect.die("unused"),
           getThreadDetailForExportById: () => Effect.die("unused"),
           getThreadDetailSnapshotById: () => Effect.die("unused"),
+          listStaleInFlightThreadIds: () => Effect.die("unused"),
         }),
       ),
     );
@@ -567,6 +573,7 @@ describe("CheckpointDiffQueryLive", () => {
           getThreadDetailById: () => Effect.die("unused"),
           getThreadDetailForExportById: () => Effect.die("unused"),
           getThreadDetailSnapshotById: () => Effect.die("unused"),
+          listStaleInFlightThreadIds: () => Effect.die("unused"),
         }),
       ),
     );

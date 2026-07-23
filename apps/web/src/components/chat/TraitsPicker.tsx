@@ -39,7 +39,6 @@ import { ShortcutKbd } from "../ui/shortcut-kbd";
 const ULTRATHINK_PROMPT_PREFIX = "Ultrathink:\n";
 
 function defaultAgentForProvider(provider: ProviderKind): string | null {
-  if (provider === "kilo") return "code";
   if (provider === "opencode") return "build";
   return null;
 }
@@ -48,7 +47,7 @@ function getAgentOptions(
   provider: ProviderKind,
   runtimeAgents: ReadonlyArray<ProviderAgentDescriptor> | null | undefined,
 ): ReadonlyArray<ProviderAgentDescriptor> {
-  if (provider !== "kilo" && provider !== "opencode") return [];
+  if (provider !== "opencode") return [];
   return runtimeAgents ?? [];
 }
 
@@ -135,7 +134,7 @@ export function resolveTraitsTriggerSummary(options: {
   const selectedAgent = getSelectedAgentValue(options.provider, options.modelOptions);
   const agentLabel = findAgentLabel(agentOptions, selectedAgent);
   // Agent name stands in as the primary label for agent-driven providers
-  // (kilo/opencode) that expose no effort/thinking controls.
+  // that expose no effort/thinking controls.
   const resolvedPrimaryLabel = primaryLabel ?? agentLabel;
   const showsFastBadge = supportsFastModeControl && fastModeEnabled && !isFastOnlyControl;
   const summaryText = [resolvedPrimaryLabel, showsFastBadge ? "Fast" : null, contextWindowLabel]
@@ -357,11 +356,9 @@ export const TraitsMenuContent = memo(function TraitsMenuContentImpl({
       }
       const optionId =
         primarySelectDescriptor?.id ??
-        (provider === "kilo" || provider === "opencode"
+        (provider === "opencode"
           ? "variant"
-          : provider === "pi"
-            ? "thinkingLevel"
-            : provider === "claudeAgent"
+          : provider === "claudeAgent"
               ? "effort"
               : "reasoningEffort");
       commitTrait(buildProviderOptionPatch(provider, optionId, nextOption.value));
@@ -419,7 +416,7 @@ export const TraitsMenuContent = memo(function TraitsMenuContentImpl({
         <>
           {hasPriorEffortSection ? <MenuDivider /> : null}
           <TraitRadioSection
-            label={provider === "kilo" || provider === "opencode" ? "Variant" : "Effort"}
+            label={provider === "opencode" ? "Variant" : "Effort"}
             labelTrailing={
               showsFastModeEffortToggle ? (
                 <FastModeToggle
@@ -469,7 +466,7 @@ export const TraitsMenuContent = memo(function TraitsMenuContentImpl({
         <>
           {hasVisibleControls ? <MenuDivider /> : null}
           <TraitRadioSection
-            label={provider === "kilo" ? "Mode" : "Agent"}
+            label="Agent"
             value={selectedAgent ?? defaultAgent ?? ""}
             options={agentOptions.map((agent) => ({
               value: agent.name,

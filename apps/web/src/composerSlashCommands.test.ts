@@ -256,21 +256,6 @@ describe("composerSlashCommands", () => {
     expect(providerSupportsTextNativeReviewCommand("claudeAgent", ["review"])).toBe(true);
   });
 
-  it("keeps app-level /automation available even if a provider exposes a native collision", () => {
-    const availableCommands = getAvailableComposerSlashCommands({
-      provider: "antigravity",
-      supportsFastSlashCommand: false,
-      canOfferCompactCommand: false,
-      canOfferReviewCommand: true,
-      canOfferForkCommand: true,
-      canOfferSideCommand: true,
-      canOfferExportCommand: true,
-      providerNativeCommandNames: ["automation"],
-    });
-
-    expect(availableCommands).toContain("automation");
-    expect(shouldHideProviderNativeCommandFromComposerMenu("antigravity", "automation")).toBe(true);
-  });
 
   it("keeps Feedback Synara ahead of provider-native /feedback", () => {
     const availableCommands = getAvailableComposerSlashCommands({
@@ -388,32 +373,6 @@ describe("composerSlashCommands", () => {
     ).not.toContain("compact");
   });
 
-  it("exposes shared app slash commands for Antigravity", () => {
-    expect(
-      getAvailableComposerSlashCommands({
-        provider: "antigravity",
-        supportsFastSlashCommand: false,
-        canOfferCompactCommand: false,
-        canOfferReviewCommand: true,
-        canOfferForkCommand: true,
-        canOfferSideCommand: true,
-        canOfferExportCommand: true,
-      }),
-    ).toEqual([
-      "clear",
-      "model",
-      "plan",
-      "default",
-      "review",
-      "fork",
-      "side",
-      "status",
-      "subagents",
-      "export",
-      "feedback",
-      "automation",
-    ]);
-  });
 
   it("treats claude aliases like /fork as provider-native collisions", () => {
     expect(hasProviderNativeSlashCommand("claudeAgent", ["branch", "model"], "fork")).toBe(true);

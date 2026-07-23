@@ -110,7 +110,7 @@ function normalizeTerminalCliKinds(
     .filter(
       ([terminalId, cliKind]) =>
         terminalId.length > 0 &&
-        (cliKind === "codex" || cliKind === "claude" || cliKind === "antigravity"),
+        (cliKind === "codex" || cliKind === "claude"),
     )
     .filter(([terminalId]) => validTerminalIdSet.has(terminalId))
     .toSorted(([leftId], [rightId]) => leftId.localeCompare(rightId));
@@ -148,7 +148,6 @@ function clearTerminalReviewState(
 function generatedTerminalTitleBase(cliKind: TerminalCliKind | null): string {
   if (cliKind === "codex") return "Codex";
   if (cliKind === "claude") return "Claude";
-  if (cliKind === "antigravity") return "Antigravity";
   return "Terminal";
 }
 

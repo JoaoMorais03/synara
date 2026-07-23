@@ -92,16 +92,12 @@ export function getRuntimeAwareModelCapabilities(input: {
   const optionDescriptors =
     input.runtimeModel?.optionDescriptors ?? staticCapabilities.optionDescriptors;
   const runtimeEfforts = input.runtimeModel?.supportedReasoningEfforts;
-  // Providers with dynamic catalogs, including Droid, expose model-specific effort ladders here.
+  // Providers with dynamic catalogs expose model-specific effort ladders here.
   if (
     (input.provider !== "codex" &&
       input.provider !== "cursor" &&
-      input.provider !== "antigravity" &&
       input.provider !== "grok" &&
-      input.provider !== "droid" &&
-      input.provider !== "kilo" &&
-      input.provider !== "opencode" &&
-      input.provider !== "pi") ||
+      input.provider !== "opencode") ||
     !runtimeEfforts ||
     runtimeEfforts.length === 0
   ) {
@@ -131,7 +127,7 @@ export function getRuntimeAwareModelCapabilities(input: {
     };
   });
 
-  if (input.provider === "kilo" || input.provider === "opencode") {
+  if (input.provider === "opencode") {
     return {
       ...staticCapabilities,
       ...(optionDescriptors ? { optionDescriptors } : {}),

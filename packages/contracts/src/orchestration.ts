@@ -1,13 +1,10 @@
 import { Option, Schema, SchemaIssue, Struct } from "effect";
 import {
-  AntigravityModelOptions,
   ClaudeModelOptions,
   CodexModelOptions,
   CursorModelOptions,
-  DroidModelOptions,
   GrokModelOptions,
   OpenCodeModelOptions,
-  PiModelOptions,
 } from "./model";
 import { ProviderMentionReference, ProviderSkillReference } from "./providerDiscovery";
 import { ProjectKind } from "./project";
@@ -56,12 +53,8 @@ export const ProviderKind = Schema.Literals([
   "codex",
   "claudeAgent",
   "cursor",
-  "antigravity",
   "grok",
-  "droid",
-  "kilo",
   "opencode",
-  "pi",
 ]);
 export type ProviderKind = typeof ProviderKind.Type;
 export const ProviderApprovalPolicy = Schema.Literals([
@@ -100,26 +93,12 @@ export const CursorModelSelection = Schema.Struct({
 });
 export type CursorModelSelection = typeof CursorModelSelection.Type;
 
-export const AntigravityModelSelection = Schema.Struct({
-  provider: Schema.Literal("antigravity"),
-  model: TrimmedNonEmptyString,
-  options: Schema.optional(AntigravityModelOptions),
-});
-export type AntigravityModelSelection = typeof AntigravityModelSelection.Type;
-
 export const GrokModelSelection = Schema.Struct({
   provider: Schema.Literal("grok"),
   model: TrimmedNonEmptyString,
   options: Schema.optional(GrokModelOptions),
 });
 export type GrokModelSelection = typeof GrokModelSelection.Type;
-
-export const DroidModelSelection = Schema.Struct({
-  provider: Schema.Literal("droid"),
-  model: TrimmedNonEmptyString,
-  options: Schema.optional(DroidModelOptions),
-});
-export type DroidModelSelection = typeof DroidModelSelection.Type;
 
 export const OpenCodeModelSelection = Schema.Struct({
   provider: Schema.Literal("opencode"),
@@ -128,30 +107,12 @@ export const OpenCodeModelSelection = Schema.Struct({
 });
 export type OpenCodeModelSelection = typeof OpenCodeModelSelection.Type;
 
-export const KiloModelSelection = Schema.Struct({
-  provider: Schema.Literal("kilo"),
-  model: TrimmedNonEmptyString,
-  options: Schema.optional(OpenCodeModelOptions),
-});
-export type KiloModelSelection = typeof KiloModelSelection.Type;
-
-export const PiModelSelection = Schema.Struct({
-  provider: Schema.Literal("pi"),
-  model: TrimmedNonEmptyString,
-  options: Schema.optional(PiModelOptions),
-});
-export type PiModelSelection = typeof PiModelSelection.Type;
-
 export const ModelSelection = Schema.Union([
   CodexModelSelection,
   ClaudeModelSelection,
   CursorModelSelection,
-  AntigravityModelSelection,
   GrokModelSelection,
-  DroidModelSelection,
-  KiloModelSelection,
   OpenCodeModelSelection,
-  PiModelSelection,
 ]);
 export type ModelSelection = typeof ModelSelection.Type;
 
@@ -166,10 +127,6 @@ export const ClaudeProviderStartOptions = Schema.Struct({
   maxThinkingTokens: Schema.optional(NonNegativeInt),
 });
 
-export const AntigravityProviderStartOptions = Schema.Struct({
-  binaryPath: Schema.optional(TrimmedNonEmptyString),
-});
-
 export const CursorProviderStartOptions = Schema.Struct({
   binaryPath: Schema.optional(TrimmedNonEmptyString),
   apiEndpoint: Schema.optional(TrimmedNonEmptyString),
@@ -179,36 +136,18 @@ export const GrokProviderStartOptions = Schema.Struct({
   binaryPath: Schema.optional(TrimmedNonEmptyString),
 });
 
-export const DroidProviderStartOptions = Schema.Struct({
-  binaryPath: Schema.optional(TrimmedNonEmptyString),
-});
-
 export const OpenCodeProviderStartOptions = Schema.Struct({
   binaryPath: Schema.optional(TrimmedNonEmptyString),
   serverUrl: Schema.optional(TrimmedNonEmptyString),
   experimentalWebSockets: Schema.optional(Schema.Boolean),
 });
 
-export const KiloProviderStartOptions = Schema.Struct({
-  binaryPath: Schema.optional(TrimmedNonEmptyString),
-  serverUrl: Schema.optional(TrimmedNonEmptyString),
-});
-
-export const PiProviderStartOptions = Schema.Struct({
-  binaryPath: Schema.optional(TrimmedNonEmptyString),
-  agentDir: Schema.optional(TrimmedNonEmptyString),
-});
-
 export const ProviderStartOptions = Schema.Struct({
   codex: Schema.optional(CodexProviderStartOptions),
   claudeAgent: Schema.optional(ClaudeProviderStartOptions),
   cursor: Schema.optional(CursorProviderStartOptions),
-  antigravity: Schema.optional(AntigravityProviderStartOptions),
   grok: Schema.optional(GrokProviderStartOptions),
-  droid: Schema.optional(DroidProviderStartOptions),
-  kilo: Schema.optional(KiloProviderStartOptions),
   opencode: Schema.optional(OpenCodeProviderStartOptions),
-  pi: Schema.optional(PiProviderStartOptions),
 });
 export type ProviderStartOptions = typeof ProviderStartOptions.Type;
 

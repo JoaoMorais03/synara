@@ -74,10 +74,6 @@ describe("providerModelsQueryOptions", () => {
     expect(queryClient.getQueryState(options.queryKey)?.status).toBe("error");
   });
 
-  it("keeps retrying transient failures for other providers", () => {
-    expect(providerModelsQueryOptions({ provider: "codex" }).retry).toBe(3);
-    expect(providerModelsQueryOptions({ provider: "droid" }).retry).toBe(0);
-  });
 
   it("surfaces real errors instead of masking them as empty catalogs", async () => {
     mockListModels(vi.fn().mockRejectedValue(new Error("discovery exploded")));

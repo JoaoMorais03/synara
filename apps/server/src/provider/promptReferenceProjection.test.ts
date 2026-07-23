@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { appendProviderReferencesPromptBlock } from "./promptReferenceProjection.ts";
 
 describe("appendProviderReferencesPromptBlock", () => {
-  it("projects Factory plugin and local path mentions without changing the user text", () => {
+  it("projects plugin and local path mentions without changing the user text", () => {
     const result = appendProviderReferencesPromptBlock({
       text: "Review this",
       mentions: [
@@ -17,7 +17,7 @@ describe("appendProviderReferencesPromptBlock", () => {
     });
 
     expect(result).toContain("Review this");
-    expect(result).toContain("Factory plugin");
+    expect(result).toContain("plugin");
     expect(result).toContain("plugin://security-engineer@factory-plugins");
     expect(result).toContain("local path");
     expect(result).toContain("/workspace/src/auth.ts");

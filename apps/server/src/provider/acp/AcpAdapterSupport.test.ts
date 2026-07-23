@@ -174,7 +174,7 @@ describe("AcpAdapterSupport", () => {
 
   it("surfaces provider detail from generic ACP internal errors", () => {
     const error = mapAcpToAdapterError(
-      "droid",
+      "cursor",
       "thread-1" as never,
       "session/prompt",
       new AcpErrors.AcpRequestError({

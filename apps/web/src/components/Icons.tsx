@@ -17,7 +17,6 @@ import {
   SiWindsurf,
   SiXcode,
 } from "react-icons/si";
-import { AntigravityBrandIcon } from "./AntigravityIcon";
 
 export type Icon = React.FC<SVGProps<SVGSVGElement>>;
 
@@ -250,7 +249,6 @@ export const WebStormIcon = adaptSimpleIcon(SiWebstorm);
 export const WindsurfIcon = adaptSimpleIcon(SiWindsurf);
 export const XcodeIcon = adaptSimpleIcon(SiXcode);
 
-export const AntigravityIcon: Icon = (props) => <AntigravityBrandIcon {...props} />;
 
 export const GrokIcon: Icon = (props) => (
   <svg {...props} viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">

@@ -23,7 +23,6 @@ import {
   hasContextWindowOption,
   hasAutoCompactWindowOption,
   isClaudeUltrathinkPrompt,
-  normalizeAntigravityModelOptions,
   normalizeClaudeModelOptions,
   normalizeCodexModelOptions,
   normalizeGrokModelOptions,
@@ -197,33 +196,12 @@ describe("resolveSelectableModel", () => {
 });
 
 describe("getModelCapabilities reasoningEffortLevels", () => {
-  const values = (provider: "codex" | "claudeAgent" | "grok" | "droid", model: string | null) =>
+  const values = (provider: "codex" | "claudeAgent" | "grok", model: string | null) =>
     getModelCapabilities(provider, model).reasoningEffortLevels.map((l) => l.value);
 
   it("returns codex reasoning options for codex", () => {
     expect(values("codex", "gpt-5.5")).toEqual([...CODEX_REASONING_EFFORT_OPTIONS]);
     expect(values("codex", "gpt-5.4")).toEqual([...CODEX_REASONING_EFFORT_OPTIONS]);
-  });
-
-  it("matches Droid's GPT-5.5 and GPT-5.6 fallback effort ladders", () => {
-    expect(values("droid", "gpt-5.5")).toEqual(["low", "medium", "high", "xhigh"]);
-    expect(values("droid", "gpt-5.5-pro")).toEqual(["medium", "high", "xhigh"]);
-    expect(values("droid", "gpt-5.6-sol")).toEqual([
-      "none",
-      "low",
-      "medium",
-      "high",
-      "xhigh",
-      "max",
-    ]);
-  });
-
-  it("models Droid fast mode as a separate GPT-5.5 slug, not a GPT-5.6 toggle", () => {
-    const droidSlugs = MODEL_OPTIONS_BY_PROVIDER.droid.map((model) => model.slug);
-
-    expect(droidSlugs).toContain("gpt-5.5-fast");
-    expect(droidSlugs).not.toContain("gpt-5.6-fast");
-    expect(getModelCapabilities("droid", "gpt-5.6-sol").supportsFastMode).toBe(false);
   });
 
   it("returns claude effort options for Opus 4.6", () => {
@@ -413,30 +391,6 @@ describe("provider option descriptor helpers", () => {
       type: "select",
       currentValue: "high",
     });
-  });
-
-  it("maps Pi reasoning controls onto the thinkingLevel option", () => {
-    const descriptors = getProviderOptionDescriptors({
-      provider: "pi",
-      caps: {
-        reasoningEffortLevels: [
-          { value: "off", label: "Off" },
-          { value: "medium", label: "Medium", isDefault: true },
-          { value: "xhigh", label: "Extra High" },
-        ],
-        supportsFastMode: false,
-        supportsThinkingToggle: false,
-        promptInjectedEffortLevels: [],
-        contextWindowOptions: [],
-      },
-      selections: { thinkingLevel: "xhigh" },
-    });
-
-    expect(descriptors.find((descriptor) => descriptor.id === "thinkingLevel")).toMatchObject({
-      type: "select",
-      currentValue: "xhigh",
-    });
-    expect(descriptors.some((descriptor) => descriptor.id === "reasoningEffort")).toBe(false);
   });
 
   it("honors explicit descriptors and serializes their current values", () => {
@@ -846,43 +800,6 @@ describe("normalizeGrokModelOptions", () => {
     expect(normalizeGrokModelOptions("grok-4.5", { reasoningEffort: "high" })).toEqual({
       reasoningEffort: "high",
     });
-  });
-});
-
-describe("normalizeAntigravityModelOptions", () => {
-  it("stores only supported non-default effort overrides", () => {
-    const runtimeCapabilities = {
-      reasoningEffortLevels: [
-        { value: "low", label: "Low" },
-        { value: "medium", label: "Medium", isDefault: true as const },
-        { value: "high", label: "High" },
-      ],
-      supportsFastMode: false,
-      supportsThinkingToggle: false,
-      promptInjectedEffortLevels: [],
-      contextWindowOptions: [],
-    };
-    expect(
-      normalizeAntigravityModelOptions(
-        "Gemini 3.5 Flash",
-        { reasoningEffort: "medium" },
-        runtimeCapabilities,
-      ),
-    ).toBeUndefined();
-    expect(
-      normalizeAntigravityModelOptions(
-        "Gemini 3.5 Flash",
-        { reasoningEffort: "ultra" },
-        runtimeCapabilities,
-      ),
-    ).toBeUndefined();
-    expect(
-      normalizeAntigravityModelOptions(
-        "Gemini 3.5 Flash",
-        { reasoningEffort: "high" },
-        runtimeCapabilities,
-      ),
-    ).toEqual({ reasoningEffort: "high" });
   });
 });
 

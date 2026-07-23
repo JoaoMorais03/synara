@@ -149,23 +149,6 @@ describe("composerDraftStore modelSelection", () => {
     expect(state.stickyActiveProvider).toBe("grok");
   });
 
-  it("stores Antigravity base models and effort options separately", () => {
-    const store = useComposerDraftStore.getState();
-    const selection = modelSelection("antigravity", "Gemini 3.5 Flash", {
-      reasoningEffort: "high",
-    });
-
-    store.setModelSelection(threadId, selection);
-    store.setStickyModelSelection(selection);
-
-    const state = useComposerDraftStore.getState();
-    expect(state.draftsByThreadId[threadId]?.modelSelectionByProvider.antigravity).toEqual(
-      selection,
-    );
-    expect(state.draftsByThreadId[threadId]?.activeProvider).toBe("antigravity");
-    expect(state.stickyModelSelectionByProvider.antigravity).toEqual(selection);
-    expect(state.stickyActiveProvider).toBe("antigravity");
-  });
 
   it("replaces only the targeted provider options on the current model selection", () => {
     const store = useComposerDraftStore.getState();
@@ -359,12 +342,8 @@ describe("composerDraftStore modelSelection", () => {
         codex: [],
         claudeAgent: [],
         cursor: [],
-        antigravity: [],
         grok: [],
-        droid: [],
-        kilo: [],
         opencode: [],
-        pi: [],
       },
       availableModelOptionsByProvider: {
         opencode: [{ slug: "opencode/gpt-5-nano", name: "GPT-5 Nano" }],
@@ -387,12 +366,8 @@ describe("composerDraftStore modelSelection", () => {
         codex: [],
         claudeAgent: [],
         cursor: [],
-        antigravity: [],
         grok: [],
-        droid: [],
-        kilo: [],
         opencode: [],
-        pi: [],
       },
       availableModelOptionsByProvider: {
         opencode: [
@@ -420,12 +395,8 @@ describe("composerDraftStore modelSelection", () => {
         codex: [],
         claudeAgent: [],
         cursor: [],
-        antigravity: [],
         grok: [],
-        droid: [],
-        kilo: [],
         opencode: [],
-        pi: [],
       },
       availableModelOptionsByProvider: {
         opencode: [
@@ -438,38 +409,6 @@ describe("composerDraftStore modelSelection", () => {
     expect(state.selectedModel).toBe("opencode/gpt-5-nano");
   });
 
-  it("preserves a selected Pi custom model when discovery omits it", () => {
-    const state = deriveEffectiveComposerModelState({
-      draft: {
-        modelSelectionByProvider: {
-          pi: modelSelection("pi", "openai/gpt-5.5"),
-        },
-        activeProvider: "pi",
-      },
-      selectedProvider: "pi",
-      threadModelSelection: null,
-      projectModelSelection: null,
-      customModelsByProvider: {
-        codex: [],
-        claudeAgent: [],
-        cursor: [],
-        antigravity: [],
-        grok: [],
-        droid: [],
-        kilo: [],
-        opencode: [],
-        pi: [],
-      },
-      availableModelOptionsByProvider: {
-        pi: [
-          { slug: "openai/gpt-5.1", name: "GPT-5.1" },
-          { slug: "anthropic/claude-sonnet-4-5", name: "Claude Sonnet 4.5" },
-        ],
-      },
-    });
-
-    expect(state.selectedModel).toBe("openai/gpt-5.5");
-  });
 });
 
 describe("composerDraftStore setModelSelection", () => {
@@ -489,16 +428,6 @@ describe("composerDraftStore setModelSelection", () => {
     ).toEqual(modelSelection("codex", "gpt-5.3-codex"));
   });
 
-  it("preserves newly discovered Droid effort strings in composer state", () => {
-    const store = useComposerDraftStore.getState();
-    store.setModelSelection(threadId, modelSelection("droid", "future-droid-model"));
-
-    store.setProviderModelOptions(threadId, "droid", { reasoningEffort: "ultra" });
-
-    expect(
-      useComposerDraftStore.getState().draftsByThreadId[threadId]?.modelSelectionByProvider.droid,
-    ).toEqual(modelSelection("droid", "future-droid-model", { reasoningEffort: "ultra" }));
-  });
 
   it("drops a runtime Codex effort when switching models before terminal promotion", () => {
     const store = useComposerDraftStore.getState();

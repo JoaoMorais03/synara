@@ -439,7 +439,7 @@ const make = Effect.gen(function* () {
   const queuedTurnPromotionOwner = `provider-queued-turn:${crypto.randomUUID()}`;
   const sidechatContextBootstrapThreadIds = new Set<string>();
   // Fresh sessions that cannot inherit native conversation state need one
-  // transcript bootstrap (fork fallbacks and non-resumable Droid model changes).
+  // transcript bootstrap (fork fallbacks and non-resumable model changes).
   const freshSessionContextBootstrapThreadIds = new Set<string>();
   // Providers without native rewind restart after rollback and receive the
   // retained projection transcript once on their next prompt.
@@ -466,8 +466,8 @@ const make = Effect.gen(function* () {
     attempt: PendingContextBootstrapAttempt,
     event: ProviderQueueDrainEvent,
   ) => {
-    // Keep bootstrap flags after cancellation or failure even though Droid may
-    // already have received the prompt. A bounded duplicate on retry is safer
+    // Keep bootstrap flags after cancellation or failure even though a provider
+    // may already have received the prompt. A bounded duplicate on retry is safer
     // than dropping the only model-visible copy of the retained transcript.
     if (event.type !== "turn.completed" || event.payload.state !== "completed") {
       return;
@@ -965,7 +965,7 @@ const make = Effect.gen(function* () {
               previousModelSelection ?? thread.modelSelection,
               requestedModelSelection,
             )
-          : (currentProvider === "droid" || currentProvider === "grok") &&
+          : currentProvider === "grok" &&
             !Equal.equals(previousModelSelection, requestedModelSelection));
 
       if (
@@ -996,14 +996,6 @@ const make = Effect.gen(function* () {
         hasResumeCursor: resumeCursor !== undefined,
       });
       const restartedSession = yield* startProviderSession(resumeCursor);
-      if (
-        shouldRegisterContextBootstrap &&
-        currentProvider === "droid" &&
-        !providerChanged &&
-        resumeCursor === undefined
-      ) {
-        freshSessionContextBootstrapThreadIds.add(threadId);
-      }
       threadSessionModelSelections.set(threadId, desiredModelSelection);
       yield* Effect.logInfo("provider command reactor restarted provider session", {
         threadId,
@@ -1023,15 +1015,6 @@ const make = Effect.gen(function* () {
         sourceThreadId: thread.forkSourceThreadId,
       });
       if (forked) {
-        if (
-          shouldRegisterContextBootstrap &&
-          preferredProvider === "droid" &&
-          thread.sidechatSourceThreadId
-        ) {
-          // Droid's ACP fork preserves the native session but does not guarantee
-          // that the imported sidechat transcript is model-visible on its first prompt.
-          sidechatContextBootstrapThreadIds.add(threadId);
-        }
         threadSessionModelSelections.set(threadId, desiredModelSelection);
         const forkedSession =
           (yield* resolveActiveSession(threadId)) ??
@@ -1247,7 +1230,7 @@ const make = Effect.gen(function* () {
       });
     }
     const shouldBootstrapPriorTranscriptContext =
-      (((selectedProvider === "kilo" || selectedProvider === "opencode") &&
+      ((selectedProvider === "opencode" &&
         activeSessionBeforeEnsure === undefined) ||
         hasPendingPriorTranscriptBootstrap) &&
       !shouldBootstrapHandoff &&
@@ -1448,17 +1431,6 @@ const make = Effect.gen(function* () {
       });
     } else {
       yield* capturePreTurnBaselines;
-      pendingContextBootstrapAttempt =
-        activeSession?.provider === "droid" &&
-        (sidechatBootstrapText !== null || priorTranscriptBootstrapText !== null)
-          ? {
-              clearSidechat: sidechatBootstrapText !== null,
-              clearPriorTranscript: priorTranscriptBootstrapText !== null,
-            }
-          : undefined;
-      if (pendingContextBootstrapAttempt) {
-        pendingContextBootstrapAttempts.set(input.threadId, pendingContextBootstrapAttempt);
-      }
       const ensureSessionForStaleRetry = ensureSessionForThread(input.threadId, input.createdAt, {
         ...(input.modelSelection !== undefined ? { modelSelection: input.modelSelection } : {}),
         ...(input.providerOptions !== undefined ? { providerOptions: input.providerOptions } : {}),
@@ -1582,18 +1554,6 @@ const make = Effect.gen(function* () {
         ),
       );
       startedTurn = sentTurn;
-      if (pendingContextBootstrapAttempt) {
-        pendingContextBootstrapAttempt.turnId = sentTurn.turnId;
-        const terminalEvent = pendingContextBootstrapAttempt.terminalEvent;
-        if (terminalEvent?.turnId === sentTurn.turnId) {
-          pendingContextBootstrapAttempts.delete(input.threadId);
-          completePendingContextBootstrapAttempt(
-            input.threadId,
-            pendingContextBootstrapAttempt,
-            terminalEvent,
-          );
-        }
-      }
     }
     if (handoffBootstrapText && thread.handoff !== null && input.reviewTarget === undefined) {
       yield* orchestrationEngine.dispatch({
@@ -2497,7 +2457,6 @@ const make = Effect.gen(function* () {
         decision: event.payload.decision,
       })
       .pipe(
-        Effect.asVoid,
         Effect.catchCause((cause) => {
           const unknownPendingRequest = isUnknownPendingApprovalRequestError(cause);
           return appendInteractionResponseFailure(event, {
@@ -2531,7 +2490,6 @@ const make = Effect.gen(function* () {
         answers: event.payload.answers,
       })
       .pipe(
-        Effect.asVoid,
         Effect.catchCause((cause) => {
           const unknownPendingRequest = isUnknownPendingUserInputRequestError(cause);
           return appendInteractionResponseFailure(event, {
@@ -2957,7 +2915,7 @@ const make = Effect.gen(function* () {
           // therefore cannot race an older archive stop against the new turn.
           yield* processThreadSessionStop({
             threadId: event.payload.threadId,
-            createdAt: event.payload.archivedAt,
+            createdAt: event.payload.archivedAt ?? event.payload.updatedAt ?? new Date().toISOString(),
           });
           return;
         case "thread.meta-updated": {

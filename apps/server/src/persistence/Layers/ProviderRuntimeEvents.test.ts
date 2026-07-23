@@ -1,4 +1,4 @@
-import { EventId, ThreadId, TurnId, type ProviderRuntimeEvent } from "@synara/contracts";
+import { EventId, RuntimeTaskId, ThreadId, TurnId, type ProviderRuntimeEvent } from "@synara/contracts";
 import { assert, it } from "@effect/vitest";
 import { Effect, Layer } from "effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
@@ -237,7 +237,7 @@ layer("ProviderRuntimeEventRepository", (it) => {
         {
           ...common,
           type: "task.completed",
-          payload: { taskId: "task-1", status: "completed" },
+          payload: { taskId: RuntimeTaskId.makeUnsafe("task-1"), status: "completed" },
         },
         {
           ...common,

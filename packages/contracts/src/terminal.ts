@@ -158,7 +158,6 @@ const TerminalActivityEvent = Schema.Struct({
     Schema.Union([
       Schema.Literal("codex"),
       Schema.Literal("claude"),
-      Schema.Literal("antigravity"),
     ]),
   ),
   agentState: Schema.NullOr(

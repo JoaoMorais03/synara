@@ -35,12 +35,8 @@ describe("threadHandoff", () => {
       "codex",
       "claudeAgent",
       "cursor",
-      "antigravity",
       "grok",
-      "droid",
-      "kilo",
       "opencode",
-      "pi",
     ] as const;
 
     for (const source of providers) {
@@ -57,39 +53,14 @@ describe("threadHandoff", () => {
     );
   });
 
-  it("prefers sticky model selection for the chosen handoff target", () => {
-    const stickySelection = {
-      provider: "antigravity",
-      model: "Gemini 3.5 Flash",
-    } satisfies ModelSelection;
-
-    expect(
-      resolveThreadHandoffModelSelection({
-        sourceThread: {
-          modelSelection: {
-            provider: "claudeAgent",
-            model: "claude-sonnet-4-6",
-          },
-        },
-        targetProvider: "antigravity",
-        projectDefaultModelSelection: {
-          provider: "antigravity",
-          model: "Claude Sonnet 4.6",
-        },
-        stickyModelSelectionByProvider: {
-          antigravity: stickySelection,
-        },
-      }),
-    ).toEqual(stickySelection);
-  });
 
   it("falls back to the resolved provider default model when no sticky or project default exists", () => {
     expect(
       resolveThreadHandoffModelSelection({
         sourceThread: {
           modelSelection: {
-            provider: "antigravity",
-            model: "Gemini 3.5 Flash",
+            provider: "grok",
+            model: "grok-build",
           },
         },
         targetProvider: "codex",

@@ -24,32 +24,14 @@ describe("providerStartOptionsFromServerSettings", () => {
           binaryPath: "",
           apiEndpoint: "",
         },
-        antigravity: {
-          ...DEFAULT_SERVER_SETTINGS.providers.antigravity,
-          binaryPath: "",
-        },
         grok: {
           ...DEFAULT_SERVER_SETTINGS.providers.grok,
           binaryPath: "",
-        },
-        droid: {
-          ...DEFAULT_SERVER_SETTINGS.providers.droid,
-          binaryPath: "",
-        },
-        kilo: {
-          ...DEFAULT_SERVER_SETTINGS.providers.kilo,
-          binaryPath: "",
-          serverUrl: "",
         },
         opencode: {
           ...DEFAULT_SERVER_SETTINGS.providers.opencode,
           binaryPath: "",
           serverUrl: "",
-        },
-        pi: {
-          ...DEFAULT_SERVER_SETTINGS.providers.pi,
-          binaryPath: "",
-          agentDir: "",
         },
       },
     };
@@ -67,12 +49,8 @@ describe("providerStartOptionsFromServerSettings", () => {
     expect(providerOptions.codex).toEqual({});
     expect(providerOptions.claudeAgent).toEqual({});
     expect(providerOptions.cursor).toEqual({});
-    expect(providerOptions.antigravity).toEqual({});
     expect(providerOptions.grok).toEqual({});
-    expect(providerOptions.droid).toEqual({});
-    expect(providerOptions.kilo).toEqual({});
     expect(providerOptions.opencode).toEqual({ experimentalWebSockets: false });
-    expect(providerOptions.pi).toEqual({});
   });
 
   it("preserves configured launch settings", () => {

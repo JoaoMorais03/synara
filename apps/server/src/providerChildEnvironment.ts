@@ -4,15 +4,11 @@
 
 export type ProviderChildKind =
   | "acp"
-  | "antigravity"
   | "claude"
   | "codex"
   | "cursor"
-  | "droid"
   | "grok"
-  | "kilo"
-  | "opencode"
-  | "pi";
+  | "opencode";
 
 const PROVIDER_CREDENTIAL_KEYS = new Set([
   "ANTHROPIC_API_KEY",
@@ -21,17 +17,21 @@ const PROVIDER_CREDENTIAL_KEYS = new Set([
   "AWS_ACCESS_KEY_ID",
   "AWS_SECRET_ACCESS_KEY",
   "AWS_SESSION_TOKEN",
+  // Keep stripping retired-provider secrets from restricted child profiles.
   "GEMINI_API_KEY",
   "GOOGLE_API_KEY",
   "GOOGLE_APPLICATION_CREDENTIALS",
+  "FACTORY_API_KEY",
   "XAI_API_KEY",
   "GROK_CODE_XAI_API_KEY",
-  "FACTORY_API_KEY",
   "CURSOR_API_KEY",
+  // Credentials for removed providers remain deny-listed so a retained
+  // provider process cannot inherit stale, unrelated authority.
+  "FACTORY_API_KEY",
+  "GOOGLE_API_KEY",
 ]);
 
 const PROVIDER_CREDENTIAL_GRANTS: Record<ProviderChildKind, "all" | ReadonlySet<string>> = {
-  antigravity: new Set(["GEMINI_API_KEY", "GOOGLE_API_KEY", "GOOGLE_APPLICATION_CREDENTIALS"]),
   claude: new Set([
     "ANTHROPIC_API_KEY",
     "ANTHROPIC_AUTH_TOKEN",
@@ -42,14 +42,11 @@ const PROVIDER_CREDENTIAL_GRANTS: Record<ProviderChildKind, "all" | ReadonlySet<
     "GOOGLE_APPLICATION_CREDENTIALS",
   ]),
   cursor: new Set(["CURSOR_API_KEY"]),
-  droid: new Set(["FACTORY_API_KEY"]),
   grok: new Set(["XAI_API_KEY", "GROK_CODE_XAI_API_KEY"]),
   // These profiles deliberately support arbitrary upstream model providers.
   acp: "all",
   codex: "all",
-  kilo: "all",
   opencode: "all",
-  pi: "all",
 };
 
 const INHERITED_NATIVE_CAPABILITY_KEYS = new Set([

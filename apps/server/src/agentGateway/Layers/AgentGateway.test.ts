@@ -736,21 +736,8 @@ function makeHarnessLayer(
         ],
         claudeAgent: [{ slug: "claude-sonnet-5", name: "Claude Sonnet 5" }],
         cursor: [{ slug: "auto", name: "Auto" }],
-        antigravity: [
-          {
-            slug: "Gemini 3.5 Flash",
-            name: "Gemini 3.5 Flash",
-            supportedReasoningEfforts: [
-              { value: "low", label: "Low" },
-              { value: "high", label: "High" },
-            ],
-          },
-        ],
         grok: [{ slug: "grok-build", name: "Grok Build" }],
-        droid: [{ slug: "claude-opus-4-8", name: "Claude Opus 4.8" }],
-        kilo: [{ slug: "kilo/kilo-auto/free", name: "Kilo Auto" }],
         opencode: [{ slug: "openai/gpt-5", name: "OpenAI GPT-5" }],
-        pi: [{ slug: "test-pi", name: "Test Pi" }],
       };
       return Effect.succeed({ models: modelsByProvider[provider] ?? [], source: "test" });
     },
@@ -760,12 +747,8 @@ function makeHarnessLayer(
     "codex",
     "claudeAgent",
     "cursor",
-    "antigravity",
     "grok",
-    "droid",
-    "kilo",
     "opencode",
-    "pi",
   ];
   let providerStatuses =
     options.providerStatuses ??
@@ -1511,41 +1494,6 @@ describe("AgentGateway", () => {
           ?.options,
         { effort: "low" },
       );
-      const antigravity = targetConstruction.antigravity as {
-        providerOptions: Array<{
-          key: string;
-          valueType: string;
-          allowedValues: ReadonlyArray<unknown>;
-          allowedValuesSource: string;
-        }>;
-        exampleTarget: { options: Record<string, unknown> };
-        optionsByModel: Record<
-          string,
-          Array<{
-            key: string;
-            valueType: string;
-            allowedValues: ReadonlyArray<unknown>;
-            allowedValuesSource: string;
-          }>
-        >;
-      };
-      assert.deepEqual(antigravity.exampleTarget.options, { reasoningEffort: "low" });
-      assert.deepEqual(
-        antigravity.providerOptions.find((option) => option.key === "reasoningEffort"),
-        {
-          key: "reasoningEffort",
-          valueType: "string",
-          allowedValues: [],
-          allowedValuesSource: "model-discovery",
-        },
-      );
-      assert.deepEqual(
-        antigravity.optionsByModel["Gemini 3.5 Flash"]?.find(
-          (option) => option.key === "reasoningEffort",
-        )?.allowedValues,
-        ["low", "high"],
-      );
-
       for (const construction of Object.values(targetConstruction)) {
         const exampleTarget = construction.exampleTarget;
         if (exampleTarget === null || exampleTarget === undefined) continue;

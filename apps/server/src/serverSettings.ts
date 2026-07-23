@@ -132,7 +132,6 @@ export class ServerSettingsService extends ServiceMap.Service<
 const PROVIDER_ORDER: readonly ProviderWithDefaultModel[] = [
   "codex",
   "claudeAgent",
-  "kilo",
   "opencode",
 ];
 
@@ -173,7 +172,7 @@ function normalizeSettings(
   );
 }
 
-const EXTERNAL_SERVER_PROVIDERS = ["kilo", "opencode"] as const;
+const EXTERNAL_SERVER_PROVIDERS = ["opencode"] as const;
 
 function readLegacyProviderPasswords(raw: string): ReadonlyMap<ExternalProviderServer, string> {
   try {
@@ -195,13 +194,11 @@ function readLegacyProviderPasswords(raw: string): ReadonlyMap<ExternalProviderS
 
 function omitProviderPasswords(patch: ServerSettingsPatch): ServerSettingsPatch {
   if (!patch.providers) return patch;
-  const { serverPassword: _kiloPassword, ...kilo } = patch.providers.kilo ?? {};
   const { serverPassword: _openCodePassword, ...opencode } = patch.providers.opencode ?? {};
   return {
     ...patch,
     providers: {
       ...patch.providers,
-      ...(patch.providers.kilo ? { kilo } : {}),
       ...(patch.providers.opencode ? { opencode } : {}),
     },
   };
@@ -258,7 +255,6 @@ const makeServerSettings = Effect.gen(function* () {
 
   const withCredentialState = (settings: ServerSettings) =>
     Effect.all({
-      kilo: providerCredentials.isServerPasswordConfigured("kilo"),
       opencode: providerCredentials.isServerPasswordConfigured("opencode"),
     }).pipe(
       Effect.map(
@@ -266,10 +262,6 @@ const makeServerSettings = Effect.gen(function* () {
           ...settings,
           providers: {
             ...settings.providers,
-            kilo: {
-              ...settings.providers.kilo,
-              serverPasswordConfigured: configured.kilo,
-            },
             opencode: {
               ...settings.providers.opencode,
               serverPasswordConfigured: configured.opencode,

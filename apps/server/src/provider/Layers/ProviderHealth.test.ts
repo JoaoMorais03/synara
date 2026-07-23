@@ -19,19 +19,16 @@ import {
 } from "../providerStatusCache";
 import {
   checkClaudeProviderStatus,
-  checkAntigravityProviderStatus,
   checkCodexProviderStatus,
   checkCursorProviderStatus,
   checkGrokProviderStatus,
   checkOpenCodeProviderStatus,
-  checkPiProviderStatus,
   hasCustomModelProvider,
   makeDisabledProviderStatus,
   makeCheckClaudeProviderStatus,
   makeCheckCodexProviderStatus,
   makeCheckCursorProviderStatus,
   makeCheckGrokProviderStatus,
-  makeCheckKiloProviderStatus,
   makeCheckOpenCodeProviderStatus,
   makeProviderHealthLive,
   parseAuthStatusFromOutput,
@@ -150,12 +147,8 @@ const allProvidersDisabledSettings = {
     codex: { enabled: false },
     claudeAgent: { enabled: false },
     cursor: { enabled: false },
-    antigravity: { enabled: false },
     grok: { enabled: false },
-    droid: { enabled: false },
-    kilo: { enabled: false },
     opencode: { enabled: false },
-    pi: { enabled: false },
   },
 } as const;
 
@@ -165,12 +158,8 @@ const allProvidersDisabledServerSettings = {
     codex: { ...DEFAULT_SERVER_SETTINGS.providers.codex, enabled: false },
     claudeAgent: { ...DEFAULT_SERVER_SETTINGS.providers.claudeAgent, enabled: false },
     cursor: { ...DEFAULT_SERVER_SETTINGS.providers.cursor, enabled: false },
-    antigravity: { ...DEFAULT_SERVER_SETTINGS.providers.antigravity, enabled: false },
     grok: { ...DEFAULT_SERVER_SETTINGS.providers.grok, enabled: false },
-    droid: { ...DEFAULT_SERVER_SETTINGS.providers.droid, enabled: false },
-    kilo: { ...DEFAULT_SERVER_SETTINGS.providers.kilo, enabled: false },
     opencode: { ...DEFAULT_SERVER_SETTINGS.providers.opencode, enabled: false },
-    pi: { ...DEFAULT_SERVER_SETTINGS.providers.pi, enabled: false },
   },
 } satisfies typeof DEFAULT_SERVER_SETTINGS;
 
@@ -246,122 +235,10 @@ function withTempCodexHome(configContent?: string) {
 }
 
 it.layer(NodeServices.layer)("ProviderHealth", (it) => {
-  describe("provider update commands", () => {
-    it("registers Antigravity's native updater", () => {
-      const definition = PACKAGE_MANAGED_PROVIDER_UPDATES.antigravity;
-      assert.ok(definition);
-
-      const capabilities = resolvePackageManagedProviderMaintenance(definition, {
-        binaryPath: "agy",
-        realCommandPath: "/Users/test/.local/bin/agy",
-        commandDirectory: "/Users/test/.local/bin",
-      });
-
-      assert.deepStrictEqual(capabilities.update, {
-        command: "agy update",
-        executable: "agy",
-        args: ["update"],
-        lockKey: "antigravity-native",
-        pathPrepend: "/Users/test/.local/bin",
-      });
-    });
-
-    it("updates npm-managed Kilo through its matching package manager and PATH", () => {
-      const definition = PACKAGE_MANAGED_PROVIDER_UPDATES.kilo;
-      assert.ok(definition);
-
-      const capabilities = resolvePackageManagedProviderMaintenance(definition, {
-        binaryPath: "kilo",
-        realCommandPath:
-          "/Users/test/.nvm/versions/node/v24.13.0/lib/node_modules/@kilocode/cli/bin/kilo",
-        commandDirectory: "/Users/test/.nvm/versions/node/v24.13.0/bin",
-      });
-
-      assert.deepStrictEqual(capabilities.update, {
-        command:
-          "npm install -g --prefix /Users/test/.nvm/versions/node/v24.13.0 @kilocode/cli@latest",
-        executable: "npm",
-        args: [
-          "install",
-          "-g",
-          "--prefix",
-          "/Users/test/.nvm/versions/node/v24.13.0",
-          "@kilocode/cli@latest",
-        ],
-        lockKey: "npm-global",
-        pathPrepend: "/Users/test/.nvm/versions/node/v24.13.0/bin",
-      });
-    });
-
-    it.effect("stops a hung provider process and persists a failed update state", () =>
-      Effect.gen(function* () {
-        let killed = false;
-        const fileSystem = yield* FileSystem.FileSystem;
-        const path = yield* Path.Path;
-        const baseDir = yield* fileSystem.makeTempDirectoryScoped({
-          prefix: "provider-update-timeout-",
-        });
-        yield* writeProviderStatusCache({
-          filePath: resolveProviderStatusCachePath({
-            stateDir: path.join(baseDir, "userdata"),
-            provider: "kilo",
-          }),
-          provider: {
-            provider: "kilo",
-            status: "ready",
-            available: true,
-            authStatus: "authenticated",
-            checkedAt: "2026-07-15T12:00:00.000Z",
-            message: "Kilo CLI is installed and authenticated.",
-            version: "7.3.46",
-          },
-        });
-        const settings = {
-          ...allProvidersDisabledServerSettings,
-          providers: {
-            ...allProvidersDisabledServerSettings.providers,
-            kilo: {
-              ...DEFAULT_SERVER_SETTINGS.providers.kilo,
-              enabled: true,
-              binaryPath:
-                "/Users/test/.nvm/versions/node/v24.13.0/lib/node_modules/@kilocode/cli/bin/kilo",
-            },
-          },
-        } satisfies typeof DEFAULT_SERVER_SETTINGS;
-        const layer = makeProviderHealthLive({ providerUpdateTimeoutMs: 20 }).pipe(
-          Layer.provideMerge(ServerSettingsService.layerTest(settings)),
-          Layer.provideMerge(ServerConfig.layerTest(process.cwd(), baseDir)),
-          Layer.provideMerge(
-            hangingSpawnerLayer({
-              onKill: () => (killed = true),
-              shouldHang: (args, command) =>
-                command === "npm" &&
-                args.join(" ") ===
-                  "install -g --prefix /Users/test/.nvm/versions/node/v24.13.0 @kilocode/cli@latest",
-            }),
-          ),
-        );
-
-        const result = yield* Effect.gen(function* () {
-          const providerHealth = yield* ProviderHealth;
-          return yield* TestClock.withLive(providerHealth.updateProvider({ provider: "kilo" }));
-        }).pipe(Effect.provide(layer));
-        const kilo = result.providers.find((provider) => provider.provider === "kilo");
-
-        assert.strictEqual(killed, true);
-        assert.strictEqual(kilo?.updateState?.status, "failed");
-        assert.strictEqual(
-          kilo?.updateState?.message,
-          "Update timed out after 20 milliseconds. The provider process was stopped.",
-        );
-      }),
-    );
-  });
-
   describe("disabled provider handling", () => {
     it("builds an inert status for disabled providers", () => {
-      assert.deepStrictEqual(makeDisabledProviderStatus("kilo", "2026-06-16T12:00:00.000Z"), {
-        provider: "kilo",
+      assert.deepStrictEqual(makeDisabledProviderStatus("opencode", "2026-06-16T12:00:00.000Z"), {
+        provider: "opencode",
         status: "warning",
         available: false,
         authStatus: "unknown",
@@ -378,7 +255,7 @@ it.layer(NodeServices.layer)("ProviderHealth", (it) => {
       );
       const codex = statuses.find((status) => status.provider === "codex");
 
-      assert.strictEqual(statuses.length, 9);
+      assert.strictEqual(statuses.length, 5);
       assert.strictEqual(codex?.available, false);
       assert.strictEqual(codex?.message, "Provider is disabled in Synara settings.");
     });
@@ -513,7 +390,7 @@ it.layer(NodeServices.layer)("ProviderHealth", (it) => {
         const providerHealth = yield* ProviderHealth;
         const statuses = yield* providerHealth.refresh;
 
-        assert.strictEqual(statuses.length, 9);
+        assert.strictEqual(statuses.length, 5);
         for (const status of statuses) {
           assert.strictEqual(status.available, false);
           assert.strictEqual(status.message, "Provider is disabled in Synara settings.");
@@ -527,10 +404,10 @@ it.layer(NodeServices.layer)("ProviderHealth", (it) => {
     it.effect("rejects one-click updates for disabled providers", () =>
       Effect.gen(function* () {
         const providerHealth = yield* ProviderHealth;
-        const error = yield* Effect.flip(providerHealth.updateProvider({ provider: "kilo" }));
+        const error = yield* Effect.flip(providerHealth.updateProvider({ provider: "opencode" }));
 
         assert.ok(error instanceof ServerProviderUpdateError);
-        assert.strictEqual(error.provider, "kilo");
+        assert.strictEqual(error.provider, "opencode");
         assert.strictEqual(error.reason, "Provider is disabled in Synara settings.");
       }).pipe(Effect.provide(disabledProviderHealthLayer)),
     );
@@ -1725,153 +1602,6 @@ it.layer(NodeServices.layer)("ProviderHealth", (it) => {
           "OpenCode CLI (`opencode`) is not installed or not on PATH.",
         );
       }).pipe(Effect.provide(failingSpawnerLayer("spawn opencode ENOENT"))),
-    );
-  });
-
-  describe("checkKiloProviderStatus", () => {
-    it.effect("uses configured Kilo binary for version probe", () =>
-      Effect.gen(function* () {
-        const status = yield* makeCheckKiloProviderStatus("/custom/bin/kilo");
-        assert.strictEqual(status.status, "ready");
-      }).pipe(
-        Effect.provide(
-          mockSpawnerLayer((args, command) => {
-            assert.strictEqual(command, "/custom/bin/kilo");
-            const joined = args.join(" ");
-            if (joined === "--version") return { stdout: "kilo 7.2.52\n", stderr: "", code: 0 };
-            throw new Error(`Unexpected args: ${joined}`);
-          }),
-        ),
-      ),
-    );
-  });
-
-  describe("checkPiProviderStatus", () => {
-    it.effect("returns ready using only the Pi CLI version probe", () =>
-      Effect.gen(function* () {
-        const status = yield* checkPiProviderStatus();
-        assert.strictEqual(status.provider, "pi");
-        assert.strictEqual(status.status, "ready");
-        assert.strictEqual(status.available, true);
-        assert.strictEqual(status.authStatus, "unknown");
-        assert.strictEqual(
-          status.message,
-          "Pi CLI is installed. Configure provider credentials inside Pi as needed.",
-        );
-      }).pipe(
-        Effect.provide(
-          mockSpawnerLayer((args, command) => {
-            assert.strictEqual(command, "pi");
-            const joined = args.join(" ");
-            if (joined === "--version") return { stdout: "pi 0.74.0\n", stderr: "", code: 0 };
-            throw new Error(`Unexpected args: ${joined}`);
-          }),
-        ),
-      ),
-    );
-
-    it.effect("uses configured Pi binary and agent dir without SDK registry reads", () =>
-      Effect.gen(function* () {
-        const status = yield* checkPiProviderStatus("/tmp/pi-agent", "/custom/bin/pi");
-        assert.strictEqual(status.status, "ready");
-        assert.strictEqual(
-          status.message,
-          "Pi CLI is installed. Synara will use Pi agent dir /tmp/pi-agent.",
-        );
-      }).pipe(
-        Effect.provide(
-          mockSpawnerLayer((args, command) => {
-            assert.strictEqual(command, "/custom/bin/pi");
-            const joined = args.join(" ");
-            if (joined === "--version") return { stdout: "pi 0.74.0\n", stderr: "", code: 0 };
-            throw new Error(`Unexpected args: ${joined}`);
-          }),
-        ),
-      ),
-    );
-
-    it.effect("keeps Pi usable when the advisory CLI probe is missing", () =>
-      Effect.gen(function* () {
-        const status = yield* checkPiProviderStatus();
-        assert.strictEqual(status.provider, "pi");
-        assert.strictEqual(status.status, "warning");
-        assert.strictEqual(status.available, true);
-        assert.strictEqual(status.authStatus, "unknown");
-        assert.strictEqual(
-          status.message,
-          "Pi SDK is bundled, but the Pi CLI (`pi`) is not on PATH, so Synara could not verify the installed CLI version.",
-        );
-      }).pipe(Effect.provide(failingSpawnerLayer("spawn pi ENOENT"))),
-    );
-  });
-
-  describe("checkAntigravityProviderStatus", () => {
-    it.effect("rejects versions that predate --new-project support", () =>
-      Effect.gen(function* () {
-        const status = yield* checkAntigravityProviderStatus();
-        assert.strictEqual(status.status, "error");
-        assert.strictEqual(status.available, false);
-        assert.strictEqual(status.version, "1.0.11");
-        assert.strictEqual(
-          status.message,
-          "Antigravity CLI 1.0.11 is too old for Synara. Upgrade to 1.0.12 or newer.",
-        );
-      }).pipe(
-        Effect.provide(
-          mockSpawnerLayer((args) => {
-            const joined = args.join(" ");
-            if (joined === "--version") {
-              return { stdout: "Antigravity CLI 1.0.11\n", stderr: "", code: 0 };
-            }
-            throw new Error(`Unexpected args: ${joined}`);
-          }),
-        ),
-      ),
-    );
-
-    it.effect("returns ready when Antigravity lists authenticated models", () =>
-      Effect.gen(function* () {
-        const status = yield* checkAntigravityProviderStatus();
-        assert.strictEqual(status.provider, "antigravity");
-        assert.strictEqual(status.status, "ready");
-        assert.strictEqual(status.available, true);
-        assert.strictEqual(status.authStatus, "authenticated");
-        assert.strictEqual(status.version, "1.1.2");
-      }).pipe(
-        Effect.provide(
-          mockSpawnerLayer((args, command) => {
-            assert.strictEqual(command, "agy");
-            const joined = args.join(" ");
-            if (joined === "--version") {
-              return { stdout: "Antigravity CLI 1.1.2\n", stderr: "", code: 0 };
-            }
-            if (joined === "models") {
-              return {
-                stdout: "Gemini 3.5 Flash (Medium)\nClaude Sonnet 4.6 (Thinking)\n",
-                stderr: "",
-                code: 0,
-              };
-            }
-            throw new Error(`Unexpected args: ${joined}`);
-          }),
-        ),
-      ),
-    );
-
-    it.effect("uses the configured Antigravity binary", () =>
-      Effect.gen(function* () {
-        const status = yield* checkAntigravityProviderStatus("/custom/bin/agy");
-        assert.strictEqual(status.status, "ready");
-      }).pipe(
-        Effect.provide(
-          mockSpawnerLayer((args, command) => {
-            assert.strictEqual(command, "/custom/bin/agy");
-            return args.join(" ") === "--version"
-              ? { stdout: "1.1.2\n", stderr: "", code: 0 }
-              : { stdout: "GPT-OSS 120B (Medium)\n", stderr: "", code: 0 };
-          }),
-        ),
-      ),
     );
   });
 

@@ -99,7 +99,7 @@ export const makeBoundedCallbackIngress = <A, E, R>(
               process(buffered.item).pipe(
                 Effect.catchCause((cause) =>
                   Cause.hasInterruptsOnly(cause)
-                    ? Effect.failCause(cause)
+                    ? Effect.die(Cause.pretty(cause))
                     : Effect.logError("bounded callback ingress item failed", {
                         cause: Cause.pretty(cause),
                       }),

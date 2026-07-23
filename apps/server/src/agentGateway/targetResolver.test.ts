@@ -85,59 +85,6 @@ describe("agent gateway target resolver", () => {
         codexGuidance.exampleTarget,
       );
 
-      const antigravityGuidance = agentGatewayTargetOptionGuidance({
-        provider: "antigravity",
-        defaultModel: "Gemini 3.5 Flash",
-        enabled: true,
-        available: true,
-        models: [
-          {
-            slug: "Gemini 3.5 Flash",
-            name: "Gemini 3.5 Flash",
-            supportedReasoningEfforts: [
-              { value: "low", label: "Low" },
-              { value: "high", label: "High" },
-            ],
-          },
-        ],
-      });
-      assert.deepEqual(antigravityGuidance.exampleTarget?.options, {
-        reasoningEffort: "low",
-      });
-      const reasoningEffort = antigravityGuidance.providerOptions.find(
-        (option) => option.key === "reasoningEffort",
-      );
-      assert.equal(reasoningEffort?.valueType, "string");
-      assert.deepEqual(reasoningEffort?.allowedValues, []);
-      assert.deepEqual(
-        antigravityGuidance.optionsByModel["Gemini 3.5 Flash"]?.find(
-          (option) => option.key === "reasoningEffort",
-        )?.allowedValues,
-        ["low", "high"],
-      );
-      const antigravityDiscovery = {
-        listModels: () =>
-          Effect.succeed({
-            source: "test",
-            models: [
-              {
-                slug: "Gemini 3.5 Flash",
-                name: "Gemini 3.5 Flash",
-                supportedReasoningEfforts: [
-                  { value: "low", label: "Low" },
-                  { value: "high", label: "High" },
-                ],
-              },
-            ],
-          }),
-      } as unknown as ProviderDiscoveryServiceShape;
-      assert.deepEqual(
-        yield* resolveAgentGatewayTarget({
-          target: antigravityGuidance.exampleTarget!,
-          discovery: antigravityDiscovery,
-        }),
-        antigravityGuidance.exampleTarget,
-      );
     }),
   );
 
@@ -222,15 +169,6 @@ describe("agent gateway target resolver", () => {
         yield* resolveAgentGatewayTarget({ target: explicitAgent, discovery: optionDiscovery }),
         explicitAgent,
       );
-      const kiloAgent = {
-        provider: "kilo" as const,
-        model: "openai/gpt-5",
-        options: { agent: "plan" },
-      };
-      assert.deepEqual(
-        yield* resolveAgentGatewayTarget({ target: kiloAgent, discovery: optionDiscovery }),
-        kiloAgent,
-      );
       const result = yield* resolveAgentGatewayTarget({
         target: {
           provider: "opencode",
@@ -286,30 +224,9 @@ describe("agent gateway target resolver", () => {
           rejectedValue: "invented",
         },
         {
-          provider: "droid",
-          descriptor: makeEffortDescriptor("droid-model", "low"),
-          optionKey: "reasoningEffort",
-          acceptedValue: "low",
-          rejectedValue: "invented",
-        },
-        {
           provider: "claudeAgent",
           descriptor: makeEffortDescriptor("claude-model", "low"),
           optionKey: "effort",
-          acceptedValue: "low",
-          rejectedValue: "invented",
-        },
-        {
-          provider: "pi",
-          descriptor: makeEffortDescriptor("pi-model", "low"),
-          optionKey: "thinkingLevel",
-          acceptedValue: "low",
-          rejectedValue: "invented",
-        },
-        {
-          provider: "antigravity",
-          descriptor: makeEffortDescriptor("antigravity-model", "low"),
-          optionKey: "reasoningEffort",
           acceptedValue: "low",
           rejectedValue: "invented",
         },
@@ -325,20 +242,6 @@ describe("agent gateway target resolver", () => {
           descriptor: makeVariantDescriptor("opencode-model"),
           optionKey: "agent",
           acceptedValue: "build",
-          rejectedValue: "",
-        },
-        {
-          provider: "kilo",
-          descriptor: makeVariantDescriptor("kilo-model"),
-          optionKey: "variant",
-          acceptedValue: "high",
-          rejectedValue: "invented",
-        },
-        {
-          provider: "kilo",
-          descriptor: makeVariantDescriptor("kilo-model"),
-          optionKey: "agent",
-          acceptedValue: "plan",
           rejectedValue: "",
         },
       ];

@@ -63,10 +63,7 @@ const PROVIDERS_WITH_THREAD_SCOPED_SYNARA_MCP = new Set<ProviderKind>([
   "claudeAgent",
   "cursor",
   "grok",
-  "droid",
   "opencode",
-  "kilo",
-  "pi",
 ]);
 
 export function providerHasSynaraGatewayControl(input: {

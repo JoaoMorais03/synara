@@ -9,12 +9,12 @@ import {
 } from "./providerAvailability";
 
 const BASE_STATUS: ServerProviderStatus = {
-  provider: "antigravity",
+  provider: "grok",
   status: "error",
   available: false,
   authStatus: "unknown",
   checkedAt: "2026-04-17T10:00:00.000Z",
-  message: "Antigravity CLI (`agy`) is not installed or not on PATH.",
+  message: "Grok CLI (`grok`) is not installed or not on PATH.",
 };
 
 const READY_STATUS: ServerProviderStatus = {
@@ -25,21 +25,6 @@ const READY_STATUS: ServerProviderStatus = {
 };
 
 describe("normalizeProviderStatusForLocalConfig", () => {
-  it("keeps Antigravity interactive when a custom binary path is configured locally", () => {
-    expect(
-      normalizeProviderStatusForLocalConfig({
-        provider: "antigravity",
-        status: BASE_STATUS,
-        customBinaryPath: "/opt/homebrew/bin/agy",
-      }),
-    ).toEqual({
-      ...BASE_STATUS,
-      available: true,
-      status: "warning",
-      message:
-        "Antigravity uses a custom local binary path in this app. Availability will be confirmed when you start a session.",
-    });
-  });
 
   it("applies the same custom-path fallback to Claude", () => {
     expect(
@@ -105,23 +90,6 @@ describe("normalizeProviderStatusForLocalConfig", () => {
     });
   });
 
-  it("preserves authenticated and unauthenticated statuses", () => {
-    expect(
-      normalizeProviderStatusForLocalConfig({
-        provider: "antigravity",
-        status: { ...BASE_STATUS, available: true, status: "ready", authStatus: "authenticated" },
-        customBinaryPath: "/opt/homebrew/bin/agy",
-      }),
-    ).toEqual({ ...BASE_STATUS, available: true, status: "ready", authStatus: "authenticated" });
-
-    expect(
-      normalizeProviderStatusForLocalConfig({
-        provider: "antigravity",
-        status: { ...BASE_STATUS, authStatus: "unauthenticated" },
-        customBinaryPath: "/opt/homebrew/bin/agy",
-      }),
-    ).toEqual({ ...BASE_STATUS, authStatus: "unauthenticated" });
-  });
 });
 
 describe("isProviderUsable", () => {
@@ -144,7 +112,7 @@ describe("resolveProviderSendAvailabilityWithRefresh", () => {
 
     await expect(
       resolveProviderSendAvailabilityWithRefresh({
-        provider: "antigravity",
+        provider: "grok",
         statuses: [READY_STATUS],
         refreshStatuses,
       }),
@@ -157,7 +125,7 @@ describe("resolveProviderSendAvailabilityWithRefresh", () => {
 
     await expect(
       resolveProviderSendAvailabilityWithRefresh({
-        provider: "antigravity",
+        provider: "grok",
         statuses: [],
         refreshStatuses,
       }),
@@ -170,7 +138,7 @@ describe("resolveProviderSendAvailabilityWithRefresh", () => {
 
     await expect(
       resolveProviderSendAvailabilityWithRefresh({
-        provider: "antigravity",
+        provider: "grok",
         statuses: [
           { ...BASE_STATUS, available: true, status: "error", authStatus: "unauthenticated" },
         ],
@@ -180,27 +148,5 @@ describe("resolveProviderSendAvailabilityWithRefresh", () => {
     expect(refreshStatuses).toHaveBeenCalledTimes(1);
   });
 
-  it("keeps the original blocked reason when refresh fails", async () => {
-    await expect(
-      resolveProviderSendAvailabilityWithRefresh({
-        provider: "antigravity",
-        statuses: [{ ...BASE_STATUS, authStatus: "unauthenticated" }],
-        refreshStatuses: vi.fn(async () => {
-          throw new Error("refresh failed");
-        }),
-      }),
-    ).resolves.toMatchObject({
-      usable: false,
-      unavailableReason: "Antigravity is not authenticated yet.",
-    });
-  });
 });
 
-describe("providerUnavailableReason", () => {
-  it("returns provider-specific guidance", () => {
-    expect(providerUnavailableReason({ ...BASE_STATUS, authStatus: "unauthenticated" })).toBe(
-      "Antigravity is not authenticated yet.",
-    );
-    expect(providerUnavailableReason(BASE_STATUS)).toBe(BASE_STATUS.message);
-  });
-});

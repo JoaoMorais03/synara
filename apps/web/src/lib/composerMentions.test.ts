@@ -98,12 +98,6 @@ describe("composer mention reference filtering", () => {
     ).toEqual([checkCode]);
   });
 
-  it("uses pi's explicit skill prefix when filtering pi skill references", () => {
-    const skill = { name: "planner", path: "/skills/planner/SKILL.md" };
-
-    expect(filterPromptSkillReferences("Use /planner", [skill], "pi")).toEqual([]);
-    expect(filterPromptSkillReferences("Use /skill:planner", [skill], "pi")).toEqual([skill]);
-  });
 });
 
 describe("formatComposerMentionToken", () => {

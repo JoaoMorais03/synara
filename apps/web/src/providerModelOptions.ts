@@ -4,24 +4,17 @@ import {
   normalizeModelSlug,
 } from "@synara/shared/model";
 import type {
-  AntigravityModelOptions,
-  AntigravityModelSelection,
   ClaudeModelOptions,
   ClaudeModelSelection,
   CodexModelOptions,
   CodexModelSelection,
   CursorModelOptions,
   CursorModelSelection,
-  DroidModelOptions,
-  DroidModelSelection,
   GrokModelOptions,
   GrokModelSelection,
-  KiloModelSelection,
   ModelSelection,
   OpenCodeModelOptions,
   OpenCodeModelSelection,
-  PiModelOptions,
-  PiModelSelection,
   ProviderKind,
   ProviderModelOptions,
 } from "@synara/contracts";
@@ -53,7 +46,7 @@ export function formatProviderModelOptionName(input: {
     return trimmedSlug;
   }
 
-  if (input.provider === "kilo" || input.provider === "opencode" || input.provider === "pi") {
+  if (input.provider === "opencode") {
     const modelIdentifier = trimmedSlug.includes("/")
       ? trimmedSlug.slice(trimmedSlug.lastIndexOf("/") + 1)
       : trimmedSlug;
@@ -81,7 +74,7 @@ function normalizeDynamicModelSlug(provider: ProviderKind, slug: string): string
  * Folds runtime-discovered models into the static option list for a provider:
  * discovered models lead (with display names recovered from the static list when
  * possible), static built-ins fill gaps unless discovery fully owns the catalog
- * (antigravity/kilo/opencode/cursor), and user-defined custom models always survive.
+ * (opencode/cursor), and user-defined custom models always survive.
  */
 export function mergeDynamicModelOptions(input: {
   provider: ProviderKind;
@@ -138,26 +131,17 @@ export function mergeDynamicModelOptions(input: {
     });
   }
 
-  // Droid validates model values against its live ACP select options, so an
-  // arbitrary custom slug is guaranteed to fail at session configuration.
-  const customOnlyModels =
-    input.provider === "droid"
-      ? []
-      : input.staticOptions.filter(
-          (model) =>
-            "isCustom" in model &&
-            model.isCustom &&
-            !dynamicNormalizedSlugs.has(normalizeDynamicModelSlug(input.provider, model.slug)),
-        );
+  const customOnlyModels = input.staticOptions.filter(
+    (model) =>
+      "isCustom" in model &&
+      model.isCustom &&
+      !dynamicNormalizedSlugs.has(normalizeDynamicModelSlug(input.provider, model.slug)),
+  );
   const staticBuiltInModels = input.staticOptions.filter(
     (model) => !("isCustom" in model) || model.isCustom !== true,
   );
   const missingStaticBuiltIns =
-    (input.provider === "antigravity" ||
-      input.provider === "kilo" ||
-      input.provider === "opencode" ||
-      input.provider === "cursor" ||
-      input.provider === "droid") &&
+    (input.provider === "opencode" || input.provider === "cursor") &&
     normalizedDynamicOptions.length > 0
       ? []
       : staticBuiltInModels.filter((model) => !dynamicNormalizedSlugs.has(model.slug));
@@ -275,23 +259,11 @@ export function buildNextProviderOptions(
   if (provider === "cursor") {
     return { ...(modelOptions as CursorModelOptions | undefined), ...patch } as CursorModelOptions;
   }
-  if (provider === "antigravity") {
-    return {
-      ...(modelOptions as AntigravityModelOptions | undefined),
-      ...patch,
-    } as AntigravityModelOptions;
-  }
   if (provider === "grok") {
     return {
       ...(modelOptions as GrokModelOptions | undefined),
       ...patch,
     } as GrokModelOptions;
-  }
-  if (provider === "droid") {
-    return {
-      ...(modelOptions as DroidModelOptions | undefined),
-      ...patch,
-    } as DroidModelOptions;
   }
   if (provider === "opencode") {
     return {
@@ -300,9 +272,9 @@ export function buildNextProviderOptions(
     } as OpenCodeModelOptions;
   }
   return {
-    ...(modelOptions as PiModelOptions | undefined),
+    ...(modelOptions as OpenCodeModelOptions | undefined),
     ...patch,
-  } as PiModelOptions;
+  } as OpenCodeModelOptions;
 }
 
 export function buildProviderOptionPatch(
@@ -329,35 +301,15 @@ export function buildModelSelection(
   options?: CursorModelOptions | null | undefined,
 ): CursorModelSelection;
 export function buildModelSelection(
-  provider: "antigravity",
-  model: string,
-  options?: AntigravityModelOptions | null | undefined,
-): AntigravityModelSelection;
-export function buildModelSelection(
   provider: "grok",
   model: string,
   options?: GrokModelOptions | null | undefined,
 ): GrokModelSelection;
 export function buildModelSelection(
-  provider: "droid",
-  model: string,
-  options?: DroidModelOptions | null | undefined,
-): DroidModelSelection;
-export function buildModelSelection(
   provider: "opencode",
   model: string,
   options?: OpenCodeModelOptions | null | undefined,
 ): OpenCodeModelSelection;
-export function buildModelSelection(
-  provider: "kilo",
-  model: string,
-  options?: OpenCodeModelOptions | null | undefined,
-): KiloModelSelection;
-export function buildModelSelection(
-  provider: "pi",
-  model: string,
-  options?: PiModelOptions | null | undefined,
-): PiModelSelection;
 export function buildModelSelection(
   provider: ProviderKind,
   model: string,
@@ -369,14 +321,6 @@ export function buildModelSelection(
   options?: ProviderOptions | null | undefined,
 ): ModelSelection {
   switch (provider) {
-    case "antigravity":
-      return options
-        ? {
-            provider,
-            model,
-            options: options as AntigravityModelOptions,
-          }
-        : { provider, model };
     case "codex":
       return options
         ? {
@@ -409,36 +353,12 @@ export function buildModelSelection(
             options: options as GrokModelOptions,
           }
         : { provider, model };
-    case "droid":
-      return options
-        ? {
-            provider,
-            model,
-            options: options as DroidModelOptions,
-          }
-        : { provider, model };
-    case "kilo":
-      return options
-        ? {
-            provider,
-            model,
-            options: options as OpenCodeModelOptions,
-          }
-        : { provider, model };
     case "opencode":
       return options
         ? {
             provider,
             model,
             options: options as OpenCodeModelOptions,
-          }
-        : { provider, model };
-    case "pi":
-      return options
-        ? {
-            provider,
-            model,
-            options: options as PiModelOptions,
           }
         : { provider, model };
   }

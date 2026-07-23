@@ -2525,7 +2525,7 @@ export default function Sidebar() {
   // Warm model discovery before ChatView mounts so new-thread composers skip
   // the "Loading models" skeleton when React Query already has a fresh cache hit.
   const prefetchModelsForProjectNewThread = useCallback(
-    (projectId: ProjectId, options?: { includeDroid?: boolean }) => {
+    (projectId: ProjectId) => {
       const project = projects.find((candidate) => candidate.id === projectId);
       if (!project) {
         return;
@@ -2542,11 +2542,6 @@ export default function Sidebar() {
         projectDefaultProvider: project.defaultModelSelection?.provider ?? null,
         defaultProvider: appSettings.defaultProvider,
       });
-      // Droid discovery spins a disposable ACP session per model — only warm it
-      // from explicit new-thread intent (hover/click), not idle project focus.
-      if (provider === "droid" && options?.includeDroid !== true) {
-        return;
-      }
       const cwd = resolveNewThreadModelPrefetchCwd({
         draftWorktreePath: draftThread?.worktreePath ?? null,
         projectCwd: project.cwd,
@@ -2566,7 +2561,7 @@ export default function Sidebar() {
     if (!primaryNewThreadTarget) {
       return;
     }
-    prefetchModelsForProjectNewThread(primaryNewThreadTarget.projectId, { includeDroid: true });
+    prefetchModelsForProjectNewThread(primaryNewThreadTarget.projectId);
   }, [prefetchModelsForProjectNewThread, primaryNewThreadTarget]);
 
   useEffect(() => {
@@ -2578,7 +2573,7 @@ export default function Sidebar() {
 
   const handlePrimaryNewThread = useCallback(() => {
     if (primaryNewThreadTarget) {
-      prefetchModelsForProjectNewThread(primaryNewThreadTarget.projectId, { includeDroid: true });
+      prefetchModelsForProjectNewThread(primaryNewThreadTarget.projectId);
       void handleNewThread(primaryNewThreadTarget.projectId, {
         envMode: resolveSidebarNewThreadEnvMode({
           defaultEnvMode: appSettings.defaultThreadEnvMode,
@@ -2642,9 +2637,7 @@ export default function Sidebar() {
           ? `Imported Claude session${suffix ? ` ${suffix}` : ""}`
           : provider === "cursor"
             ? `Imported Cursor session${suffix ? ` ${suffix}` : ""}`
-            : provider === "kilo"
-              ? `Imported Kilo session${suffix ? ` ${suffix}` : ""}`
-              : provider === "opencode"
+            : provider === "opencode"
                 ? `Imported OpenCode session${suffix ? ` ${suffix}` : ""}`
                 : `Imported Codex thread${suffix ? ` ${suffix}` : ""}`;
       let createdThread = false;
@@ -4747,15 +4740,15 @@ export default function Sidebar() {
                 tooltipSide="top"
                 data-testid="new-thread-button"
                 onMouseEnter={() => {
-                  prefetchModelsForProjectNewThread(project.id, { includeDroid: true });
+                  prefetchModelsForProjectNewThread(project.id);
                 }}
                 onFocus={() => {
-                  prefetchModelsForProjectNewThread(project.id, { includeDroid: true });
+                  prefetchModelsForProjectNewThread(project.id);
                 }}
                 onClick={(event) => {
                   event.preventDefault();
                   event.stopPropagation();
-                  prefetchModelsForProjectNewThread(project.id, { includeDroid: true });
+                  prefetchModelsForProjectNewThread(project.id);
                   void handleNewThread(project.id, {
                     envMode: resolveSidebarNewThreadEnvMode({
                       defaultEnvMode: appSettings.defaultThreadEnvMode,
@@ -6635,14 +6628,14 @@ function SidebarSearchPaletteController(props: {
   const selectAllThreads = useMemo(() => createAllThreadsSelector(), []);
   const selectSidebarDisplayThreads = useMemo(() => createSidebarDisplayThreadsSelector(), []);
   const importProviderCapabilityQueries = useQueries({
-    queries: (["codex", "claudeAgent", "cursor", "kilo", "opencode"] as const).map((provider) =>
+    queries: (["codex", "claudeAgent", "cursor", "opencode"] as const).map((provider) =>
       providerComposerCapabilitiesQueryOptions(provider),
     ),
   });
   const threads = useStore(selectAllThreads);
   const sidebarDisplayThreads = useStore(selectSidebarDisplayThreads);
   const importProviders: ReadonlyArray<ImportProviderKind> = (
-    ["codex", "claudeAgent", "cursor", "kilo", "opencode"] as const
+    ["codex", "claudeAgent", "cursor", "opencode"] as const
   ).filter((provider, index) => supportsThreadImport(importProviderCapabilityQueries[index]?.data));
   const searchPaletteThreads = useMemo<SidebarSearchThread[]>(() => {
     const threadById = new Map(threads.map((thread) => [thread.id, thread] as const));

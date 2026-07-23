@@ -151,7 +151,7 @@ interface CodexSessionContext {
   taskCompleteFallback?: {
     readonly turnId: TurnId;
     readonly timeout: ReturnType<typeof setTimeout>;
-  };
+  } | undefined;
   nextRequestId: number;
   stopping: boolean;
   stopPromise?: Promise<void>;

@@ -41,12 +41,8 @@ export const ORIGIN_SECTION_ORDER = [
   "codex",
   "claude",
   "cursor",
-  "antigravity",
   "grok",
-  "droid",
-  "kilo",
   "opencode",
-  "pi",
   "agents",
   "project",
 ] as const;
@@ -60,18 +56,10 @@ export function skillOriginInfo(scope: string | undefined): SkillOriginInfo {
       return { label: PROVIDER_DISPLAY_NAMES.claudeAgent, provider: "claudeAgent" };
     case "cursor":
       return { label: PROVIDER_DISPLAY_NAMES.cursor, provider: "cursor" };
-    case "antigravity":
-      return { label: PROVIDER_DISPLAY_NAMES.antigravity, provider: "antigravity" };
     case "grok":
       return { label: PROVIDER_DISPLAY_NAMES.grok, provider: "grok" };
-    case "droid":
-      return { label: PROVIDER_DISPLAY_NAMES.droid, provider: "droid" };
-    case "kilo":
-      return { label: PROVIDER_DISPLAY_NAMES.kilo, provider: "kilo" };
     case "opencode":
       return { label: PROVIDER_DISPLAY_NAMES.opencode, provider: "opencode" };
-    case "pi":
-      return { label: PROVIDER_DISPLAY_NAMES.pi, provider: "pi" };
     case "agents":
       return { label: "Shared (.agents)", provider: null };
     case "project":

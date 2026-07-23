@@ -65,19 +65,11 @@ type ProviderInstallTextKey =
   | "codexHomePath"
   | "cursorBinaryPath"
   | "cursorApiEndpoint"
-  | "antigravityBinaryPath"
   | "grokBinaryPath"
-  | "droidBinaryPath"
-  | "kiloBinaryPath"
-  | "kiloServerUrl"
   | "openCodeBinaryPath"
   | "openCodeServerUrl"
-  | "piBinaryPath"
-  | "piAgentDir";
-type ProviderInstallPasswordKey = "kiloServerPassword" | "openCodeServerPassword";
-type ProviderInstallPasswordConfiguredKey =
-  | "kiloServerPasswordConfigured"
-  | "openCodeServerPasswordConfigured";
+type ProviderInstallPasswordKey = "openCodeServerPassword";
+type ProviderInstallPasswordConfiguredKey = "openCodeServerPasswordConfigured";
 type ProviderInstallBooleanKey = "openCodeExperimentalWebSockets";
 
 type ProviderInstallTextField = {
@@ -197,27 +189,6 @@ const PROVIDER_INSTALL_SETTINGS: readonly ProviderInstallSettings[] = [
     ],
   },
   {
-    provider: "antigravity",
-    docs: [
-      { label: "Install", href: "https://antigravity.google/docs/cli-using" },
-      { label: "Reference", href: "https://antigravity.google/docs/cli-reference" },
-      { label: "Hooks", href: "https://antigravity.google/docs/hooks" },
-    ],
-    fields: [
-      {
-        kind: "text",
-        settingsKey: "antigravityBinaryPath",
-        label: "Antigravity binary path",
-        placeholder: "Antigravity CLI binary path",
-        description: (
-          <>
-            Leave blank to use <code>agy</code> from your PATH.
-          </>
-        ),
-      },
-    ],
-  },
-  {
     provider: "grok",
     docs: [
       { label: "Install", href: "https://docs.x.ai/build/overview" },
@@ -235,64 +206,6 @@ const PROVIDER_INSTALL_SETTINGS: readonly ProviderInstallSettings[] = [
             Leave blank to use <code>grok</code> from your PATH.
           </>
         ),
-      },
-    ],
-  },
-  {
-    provider: "droid",
-    docs: [
-      {
-        label: "Quickstart",
-        href: "https://docs.factory.ai/cli/getting-started/quickstart.md",
-      },
-    ],
-    fields: [
-      {
-        kind: "text",
-        settingsKey: "droidBinaryPath",
-        label: "Droid binary path",
-        placeholder: "droid",
-        description: (
-          <>
-            Leave blank to use <code>droid</code> from your PATH.
-          </>
-        ),
-      },
-    ],
-  },
-  {
-    provider: "kilo",
-    docs: [
-      { label: "Install", href: "https://kilo.ai/docs/cli" },
-      { label: "Update", href: "https://kilo.ai/docs/cli" },
-      { label: "Config", href: "https://kilo.ai/docs/cli#configuration" },
-    ],
-    fields: [
-      {
-        kind: "text",
-        settingsKey: "kiloBinaryPath",
-        label: "Kilo binary path",
-        placeholder: "Kilo binary path",
-        description: (
-          <>
-            Leave blank to use <code>kilo</code> from your PATH.
-          </>
-        ),
-      },
-      {
-        kind: "text",
-        settingsKey: "kiloServerUrl",
-        label: "Kilo server URL",
-        placeholder: "http://127.0.0.1:4096",
-        description: "Optional existing Kilo server URL. Leave blank to spawn a local server.",
-      },
-      {
-        kind: "password",
-        settingsKey: "kiloServerPassword",
-        configuredKey: "kiloServerPasswordConfigured",
-        label: "Kilo server password",
-        placeholder: "Kilo server password",
-        description: "Optional password for an externally managed Kilo server.",
       },
     ],
   },
@@ -336,34 +249,6 @@ const PROVIDER_INSTALL_SETTINGS: readonly ProviderInstallSettings[] = [
         label: "OpenAI response WebSockets",
         description:
           "Use Opencode's experimental OpenAI response WebSocket transport for managed local servers.",
-      },
-    ],
-  },
-  {
-    provider: "pi",
-    docs: [
-      { label: "Install", href: "https://pi.dev/docs/latest" },
-      { label: "Update", href: "https://pi.dev/docs/latest/settings" },
-      { label: "Config", href: "https://pi.dev/docs/latest/settings" },
-    ],
-    fields: [
-      {
-        kind: "text",
-        settingsKey: "piBinaryPath",
-        label: "Pi binary path",
-        placeholder: "Pi binary path",
-        description: (
-          <>
-            Leave blank to use <code>pi</code> from your PATH.
-          </>
-        ),
-      },
-      {
-        kind: "text",
-        settingsKey: "piAgentDir",
-        label: "Pi agent directory",
-        placeholder: "Pi agent directory",
-        description: "Optional custom Pi agent directory for auth, models, skills, and commands.",
       },
     ],
   },

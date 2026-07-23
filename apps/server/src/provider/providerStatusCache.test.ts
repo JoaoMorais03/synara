@@ -78,13 +78,6 @@ describe("providerStatusCache", () => {
     expect(
       orderProviderStatuses([
         {
-          provider: "antigravity",
-          status: "ready",
-          available: true,
-          authStatus: "authenticated",
-          checkedAt: "2026-04-15T10:02:00.000Z",
-        },
-        {
           provider: "claudeAgent",
           status: "warning",
           available: true,
@@ -122,13 +115,6 @@ describe("providerStatusCache", () => {
         available: true,
         authStatus: "unknown",
         checkedAt: "2026-04-15T10:03:00.000Z",
-      },
-      {
-        provider: "antigravity",
-        status: "ready",
-        available: true,
-        authStatus: "authenticated",
-        checkedAt: "2026-04-15T10:02:00.000Z",
       },
       {
         provider: "grok",

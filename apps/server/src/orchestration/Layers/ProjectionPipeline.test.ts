@@ -247,7 +247,7 @@ it.layer(BaseTestLayer)("OrchestrationProjectionPipeline", (it) => {
           projectId: ProjectId.makeUnsafe("project-turn-settings"),
           title: "Thread",
           modelSelection: {
-            provider: "pi",
+            provider: "opencode",
             model: "openai/gpt-5.1",
           },
           runtimeMode: "full-access",
@@ -272,7 +272,7 @@ it.layer(BaseTestLayer)("OrchestrationProjectionPipeline", (it) => {
           threadId: ThreadId.makeUnsafe("thread-turn-settings"),
           messageId: MessageId.makeUnsafe("message-turn-settings"),
           modelSelection: {
-            provider: "pi",
+            provider: "opencode",
             model: "openai/gpt-5.5",
           },
           runtimeMode: "approval-required",
@@ -300,7 +300,7 @@ it.layer(BaseTestLayer)("OrchestrationProjectionPipeline", (it) => {
 
       assert.equal(rows.length, 1);
       assert.deepEqual(JSON.parse(rows[0]!.modelSelectionJson), {
-        provider: "pi",
+        provider: "opencode",
         model: "openai/gpt-5.5",
       });
       assert.equal(rows[0]!.runtimeMode, "approval-required");
@@ -326,7 +326,7 @@ it.layer(BaseTestLayer)("OrchestrationProjectionPipeline", (it) => {
       assert.deepEqual(sessionRows, [
         {
           status: "starting",
-          providerName: "pi",
+          providerName: "opencode",
           runtimeMode: "approval-required",
           activeTurnId: null,
           updatedAt: turnRequestedAt,
@@ -349,7 +349,7 @@ it.layer(BaseTestLayer)("OrchestrationProjectionPipeline", (it) => {
           session: {
             threadId: ThreadId.makeUnsafe("thread-turn-settings"),
             status: "ready",
-            providerName: "pi",
+            providerName: "opencode",
             runtimeMode: "approval-required",
             activeTurnId: null,
             lastError: null,
@@ -421,10 +421,10 @@ it.layer(BaseTestLayer)("OrchestrationProjectionPipeline", (it) => {
         WHERE threads.thread_id = 'thread-turn-settings'
       `;
       assert.deepEqual(JSON.parse(providerRows[0]!.modelSelectionJson), {
-        provider: "pi",
+        provider: "opencode",
         model: "openai/gpt-5.5",
       });
-      assert.equal(providerRows[0]!.providerName, "pi");
+      assert.equal(providerRows[0]!.providerName, "opencode");
     }),
   );
 

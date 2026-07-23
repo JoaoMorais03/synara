@@ -254,13 +254,6 @@ export class OpenCodeTextGeneration extends ServiceMap.Service<
   TextGenerationShape
 >()("synara/git/Services/TextGeneration/OpenCodeTextGeneration") {}
 
-/**
- * KiloTextGeneration - Provider-specific Kilo implementation for git text generation.
- */
-export class KiloTextGeneration extends ServiceMap.Service<
-  KiloTextGeneration,
-  TextGenerationShape
->()("synara/git/Services/TextGeneration/KiloTextGeneration") {}
 
 /**
  * CursorTextGeneration - Provider-specific Cursor implementation for git text generation.
