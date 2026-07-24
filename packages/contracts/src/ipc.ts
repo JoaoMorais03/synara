@@ -118,6 +118,16 @@ import type {
   ProjectWriteFileResult,
 } from "./project";
 import type { FilesystemBrowseInput, FilesystemBrowseResult } from "./filesystem";
+import type {
+  MarkdownNote,
+  MarkdownNoteSummary,
+  NotesCreateInput,
+  NotesDeleteInput,
+  NotesListResult,
+  NotesReadInput,
+  NotesRenameInput,
+  NotesWriteInput,
+} from "./notes";
 import type { StudioListThreadOutputsInput, StudioListThreadOutputsResult } from "./studio";
 import type {
   ServerConfig,
@@ -569,6 +579,14 @@ export interface NativeApi {
   };
   filesystem: {
     browse: (input: FilesystemBrowseInput) => Promise<FilesystemBrowseResult>;
+  };
+  notes: {
+    list: () => Promise<NotesListResult>;
+    read: (input: NotesReadInput) => Promise<MarkdownNote>;
+    write: (input: NotesWriteInput) => Promise<MarkdownNoteSummary>;
+    create: (input?: NotesCreateInput) => Promise<MarkdownNote>;
+    delete: (input: NotesDeleteInput) => Promise<{ deleted: boolean }>;
+    rename: (input: NotesRenameInput) => Promise<MarkdownNoteSummary>;
   };
   studio: {
     listThreadOutputs: (

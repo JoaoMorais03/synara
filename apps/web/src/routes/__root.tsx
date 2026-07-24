@@ -32,6 +32,7 @@ import ShortcutsDialog from "../components/ShortcutsDialog";
 import WhatsNewDialog from "../components/WhatsNewDialog";
 import { useWhatsNew } from "../whatsNew/useWhatsNew";
 import { WhatsNewPopoutCard } from "../whatsNew/WhatsNewPopoutCard";
+import { MarkdownNotesSurface } from "../components/notes/MarkdownNotesSurface";
 import { shouldRenderTerminalWorkspace } from "../components/ChatView.logic";
 import { Button, dialogActionButtonClassName } from "../components/ui/button";
 import { AnchoredToastProvider, ToastProvider, toastManager } from "../components/ui/toast";
@@ -226,6 +227,7 @@ function RootRouteView() {
           <GlobalShortcutsDialog />
           <GlobalFeedbackDialog />
           <GlobalWhatsNewSurface />
+          <MarkdownNotesSurface />
           <TaskCompletionNotifications />
           <AppSnapWelcomeDialog />
           <AppSnapCoordinator />
@@ -681,6 +683,7 @@ function GlobalWhatsNewSurface() {
           currentVersion={currentVersion}
           onOpen={openDialog}
           onDismiss={dismissPopout}
+          className="bottom-16 left-3"
         />
       )}
       <WhatsNewDialog

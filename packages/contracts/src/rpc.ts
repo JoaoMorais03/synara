@@ -31,6 +31,17 @@ import {
   ExternalMcpRevokeIntegrationInput,
 } from "./externalMcp";
 import { FilesystemBrowseInput, FilesystemBrowseResult } from "./filesystem";
+import {
+  MarkdownNote,
+  MarkdownNoteSummary,
+  NotesCreateInput,
+  NotesDeleteInput,
+  NotesListInput,
+  NotesListResult,
+  NotesReadInput,
+  NotesRenameInput,
+  NotesWriteInput,
+} from "./notes";
 import { StudioListThreadOutputsInput, StudioListThreadOutputsResult } from "./studio";
 import {
   GitCheckoutInput,
@@ -410,6 +421,42 @@ export const WsStudioListThreadOutputsRpc = Rpc.make(WS_METHODS.studioListThread
 export const WsFilesystemBrowseRpc = Rpc.make(WS_METHODS.filesystemBrowse, {
   payload: FilesystemBrowseInput,
   success: FilesystemBrowseResult,
+  error: WsRpcError,
+});
+
+export const WsNotesListRpc = Rpc.make(WS_METHODS.notesList, {
+  payload: NotesListInput,
+  success: NotesListResult,
+  error: WsRpcError,
+});
+
+export const WsNotesReadRpc = Rpc.make(WS_METHODS.notesRead, {
+  payload: NotesReadInput,
+  success: MarkdownNote,
+  error: WsRpcError,
+});
+
+export const WsNotesWriteRpc = Rpc.make(WS_METHODS.notesWrite, {
+  payload: NotesWriteInput,
+  success: MarkdownNoteSummary,
+  error: WsRpcError,
+});
+
+export const WsNotesCreateRpc = Rpc.make(WS_METHODS.notesCreate, {
+  payload: NotesCreateInput,
+  success: MarkdownNote,
+  error: WsRpcError,
+});
+
+export const WsNotesDeleteRpc = Rpc.make(WS_METHODS.notesDelete, {
+  payload: NotesDeleteInput,
+  success: Schema.Struct({ deleted: Schema.Boolean }),
+  error: WsRpcError,
+});
+
+export const WsNotesRenameRpc = Rpc.make(WS_METHODS.notesRename, {
+  payload: NotesRenameInput,
+  success: MarkdownNoteSummary,
   error: WsRpcError,
 });
 
@@ -992,6 +1039,12 @@ export const WsFeatureRpcGroup = RpcGroup.make(
   WsSubscribeProjectDevServerEventsRpc,
   WsStudioListThreadOutputsRpc,
   WsFilesystemBrowseRpc,
+  WsNotesListRpc,
+  WsNotesReadRpc,
+  WsNotesWriteRpc,
+  WsNotesCreateRpc,
+  WsNotesDeleteRpc,
+  WsNotesRenameRpc,
   WsShellOpenInEditorRpc,
   WsGitGithubRepositoryRpc,
   WsGitStatusRpc,
