@@ -11,7 +11,6 @@ import { ServerConfig } from "../config.ts";
 import { ExternalMcpGateway } from "./Services/ExternalMcpGateway.ts";
 import { ExternalMcpService } from "./Services/ExternalMcpService.ts";
 import {
-  EXTERNAL_MCP_MAX_BODY_BYTES,
   externalMcpRouteLayer,
   readExternalMcpBody,
   readExternalMcpManagementBody,
@@ -149,63 +148,30 @@ async function withExternalMcpServer(
 }
 
 describe("externalMcpRouteLayer", () => {
-  it("bounds execution per integration without letting long waits starve another integration", async () => {
-    let releaseBlocked!: () => void;
-    const blocked = new Promise<void>((resolve) => {
-      releaseBlocked = resolve;
-    });
-    let handledCount = 0;
-    await withExternalMcpServer(
-      {
-        handleVerifiedPost: () => {
-          handledCount += 1;
-          return handledCount <= 8
-            ? Effect.promise(() => blocked).pipe(
-                Effect.as({ status: 200, body: { released: true } }),
-              )
-            : Effect.succeed({ status: 200, body: { admitted: true } });
+  it("returns 410 for External MCP product routes after ADE surface removal", async () => {
+    await withExternalMcpServer({}, async ({ origin, handledBodies }) => {
+      const mcpPost = await fetch(`${origin}/mcp/external`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${EXTERNAL_TOKEN}`,
+          "Content-Type": "application/json",
         },
-      },
-      async ({ origin, handledBodies }) => {
-        const post = (id: number, token = EXTERNAL_TOKEN) =>
-          fetch(`${origin}/mcp/external`, {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ jsonrpc: "2.0", id, method: "ping" }),
-          });
-        const blockedRequests = Array.from({ length: 8 }, (_, index) => post(index + 1));
-        try {
-          const deadline = Date.now() + 1_000;
-          while (handledBodies.length < 8 && Date.now() < deadline) {
-            await new Promise((resolve) => setTimeout(resolve, 5));
-          }
-          expect(handledBodies).toHaveLength(8);
-          const saturated = await post(9);
-          expect(saturated.status).toBe(429);
-          expect(handledBodies).toHaveLength(8);
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "ping" }),
+      });
+      expect(mcpPost.status).toBe(410);
+      expect(await mcpPost.text()).toContain("removed");
 
-          const otherIntegration = await Promise.race([
-            post(10, OTHER_EXTERNAL_TOKEN),
-            new Promise<never>((_, reject) =>
-              setTimeout(
-                () => reject(new Error("another integration remained behind occupied permits")),
-                1_000,
-              ),
-            ),
-          ]);
-          expect(otherIntegration.status).toBe(200);
-          expect(handledBodies).toHaveLength(9);
-        } finally {
-          releaseBlocked();
-          await Promise.allSettled(blockedRequests);
-        }
-        const recovered = await post(11);
-        expect(recovered.status).toBe(200);
-      },
-    );
+      const list = await fetch(`${origin}/api/mcp/external/integrations`);
+      expect(list.status).toBe(410);
+
+      const revoke = await fetch(`${origin}/api/mcp/external/integrations/revoke`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Origin: origin },
+        body: JSON.stringify({ integrationId: "integration-route-test" }),
+      });
+      expect(revoke.status).toBe(410);
+      expect(handledBodies).toHaveLength(0);
+    });
   });
 
   it("times out stalled body streams and releases their permits", async () => {
@@ -321,108 +287,4 @@ describe("externalMcpRouteLayer", () => {
     await Promise.all(stalledManagementReads);
   });
 
-  it("rejects non-external tokens before reading the body and enforces its smaller limit", async () => {
-    await withExternalMcpServer({}, async ({ origin, handledBodies }) => {
-      const oversizedBody = "x".repeat(EXTERNAL_MCP_MAX_BODY_BYTES + 1);
-      const providerToken = await fetch(`${origin}/mcp/external`, {
-        method: "POST",
-        headers: { Authorization: "Bearer sagw_session_provider-token" },
-        body: oversizedBody,
-      });
-      expect(providerToken.status).toBe(401);
-
-      const oversized = await fetch(`${origin}/mcp/external`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${EXTERNAL_TOKEN}` },
-        body: oversizedBody,
-      });
-      expect(oversized.status).toBe(413);
-      expect(handledBodies).toHaveLength(0);
-
-      const body = { jsonrpc: "2.0", id: 1, method: "ping" };
-      const valid = await fetch(`${origin}/mcp/external`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${EXTERNAL_TOKEN}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      });
-      expect(valid.status).toBe(200);
-      expect(handledBodies).toEqual([body]);
-
-      const escapedPromptBody = {
-        jsonrpc: "2.0",
-        id: 2,
-        method: "tools/call",
-        params: {
-          name: "synara_create_task",
-          arguments: { prompt: "\u0000".repeat(100_000) },
-        },
-      };
-      const escapedPrompt = await fetch(`${origin}/mcp/external`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${EXTERNAL_TOKEN}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(escapedPromptBody),
-      });
-      expect(escapedPrompt.status).toBe(200);
-      expect(handledBodies.at(-1)).toEqual(escapedPromptBody);
-    });
-  });
-
-  it("reports credential repository failures as unavailable instead of invalid auth", async () => {
-    await withExternalMcpServer(
-      {
-        verifyCredentialFailure: {
-          code: "repository_error",
-          message: "database unavailable",
-          status: 500,
-        },
-      },
-      async ({ origin, handledBodies }) => {
-        const response = await fetch(`${origin}/mcp/external`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${EXTERNAL_TOKEN}` },
-          body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "ping" }),
-        });
-        expect(response.status).toBe(503);
-        expect(await response.text()).toContain("external_service_unavailable");
-        expect(handledBodies).toHaveLength(0);
-      },
-    );
-  });
-
-  it("does not expose the external endpoint from a remotely bound instance", async () => {
-    await withExternalMcpServer({ host: "0.0.0.0" }, async ({ origin, handledBodies }) => {
-      const response = await fetch(`${origin}/mcp/external`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${EXTERNAL_TOKEN}` },
-        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "ping" }),
-      });
-      expect(response.status).toBe(404);
-      expect(handledBodies).toHaveLength(0);
-    });
-  });
-
-  it("requires a trusted origin for cookie-authenticated owner mutations", async () => {
-    await withExternalMcpServer({}, async ({ origin }) => {
-      const body = JSON.stringify({ integrationId: "integration-route-test" });
-      const missingOrigin = await fetch(`${origin}/api/mcp/external/integrations/revoke`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body,
-      });
-      expect(missingOrigin.status).toBe(403);
-
-      const trustedOrigin = await fetch(`${origin}/api/mcp/external/integrations/revoke`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Origin: origin },
-        body,
-      });
-      expect(trustedOrigin.status).toBe(200);
-    });
-  });
 });

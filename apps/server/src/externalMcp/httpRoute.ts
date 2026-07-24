@@ -12,7 +12,6 @@ import { extractBearerToken } from "../agentGateway/bearerToken.ts";
 import { makeEffectAuthRequest } from "../auth/effectHttp.ts";
 import { ServerAuth } from "../auth/Services/ServerAuth.ts";
 import { ServerConfig } from "../config.ts";
-import { isLoopbackHost } from "../startupAccess.ts";
 import { shouldRejectAuthMutationOrigin } from "../trustedOrigins.ts";
 import { ExternalMcpGateway } from "./Services/ExternalMcpGateway.ts";
 import { ExternalMcpService } from "./Services/ExternalMcpService.ts";
@@ -86,15 +85,17 @@ const decodeRuntimeChallenge = Schema.decodeUnknownEffect(
   }),
 );
 
-const localExternalMcpEnabled = Effect.gen(function* () {
-  const config = yield* ServerConfig;
-  return isLoopbackHost(config.host) && config.publicUrl === undefined;
-});
+// Product surface removed for simple macOS ADE. Keep routes so old clients get a
+// clear 410 instead of silent 404 / accidental re-enable via loopback checks.
+const localExternalMcpEnabled = Effect.succeed(false);
 
 const disabledResponse = () =>
   HttpServerResponse.jsonUnsafe(
-    { error: "External MCP is available only from a loopback-only Synara instance." },
-    { status: 404 },
+    {
+      error:
+        "External MCP product surface was removed. Synara is a local macOS ADE only.",
+    },
+    { status: 410 },
   );
 
 const externalUnauthorized = () =>
