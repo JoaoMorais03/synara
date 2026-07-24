@@ -16,7 +16,7 @@ import {
   TurnId,
   type UserInputQuestion,
 } from "@synara/contracts";
-import { Cause, Deferred, Effect, Exit, Layer, Option, Queue, Ref, Scope, Stream } from "effect";
+import { Cause, Deferred, Effect, Exit, Layer, Queue, Ref, Scope, Stream } from "effect";
 import type {
   AssistantMessage,
   OpencodeClient,
@@ -36,13 +36,6 @@ import {
   ProviderAdapterSessionNotFoundError,
   ProviderAdapterValidationError,
 } from "../Errors.ts";
-import { takeSynaraHarnessPolicyForProviderSession } from "../../agentGateway/harnessPolicy.ts";
-import { buildOpenCodeMcpServer, SYNARA_MCP_SERVER_NAME } from "../../agentGateway/mcpInjection.ts";
-import { AgentGatewayCredentials } from "../../agentGateway/Services/AgentGatewayCredentials.ts";
-import {
-  acquireAgentGatewaySessionLease,
-  type AgentGatewaySessionLease,
-} from "../../agentGateway/sessionLease.ts";
 import { OpenCodeAdapter, type OpenCodeAdapterShape } from "../Services/OpenCodeAdapter.ts";
 import { PROVIDER_ADAPTER_RUNTIME_EVENT_BUFFER_CAPACITY } from "../Services/ProviderAdapter.ts";
 import {
@@ -131,9 +124,6 @@ interface OpenCodeTurnSnapshot {
 }
 
 interface OpenCodeSessionContext {
-  harnessPolicyDelivered?: boolean;
-  readonly gatewayControlAvailable: boolean;
-  gatewaySessionLease?: AgentGatewaySessionLease;
   session: ProviderSession;
   readonly lifecycleGeneration?: string;
   readonly client: OpencodeClient;
@@ -171,11 +161,6 @@ interface OpenCodeSessionContext {
   activeVariant: string | undefined;
   readonly stopped: Ref.Ref<boolean>;
   readonly sessionScope: Scope.Closeable;
-}
-
-function releaseOpenCodeGatewayLease(context: OpenCodeSessionContext): void {
-  context.gatewaySessionLease?.release();
-  delete context.gatewaySessionLease;
 }
 
 interface OpenCodeMessageSnapshot {
@@ -1099,9 +1084,7 @@ const stopOpenCodeContext = Effect.fn("stopOpenCodeContext")(function* (
     context.client.session.abort({ sessionID: context.openCodeSessionId }),
   ).pipe(Effect.ignore({ log: true }));
 
-  yield* Scope.close(context.sessionScope, Exit.void).pipe(
-    Effect.ensuring(Effect.sync(() => releaseOpenCodeGatewayLease(context))),
-  );
+  yield* Scope.close(context.sessionScope, Exit.void);
 });
 
 export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
@@ -1111,9 +1094,6 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
     Effect.gen(function* () {
       const serverConfig = yield* ServerConfig;
       const openCodeRuntime = yield* OpenCodeRuntime;
-      const agentGatewayCredentials = Option.getOrUndefined(
-        yield* Effect.serviceOption(AgentGatewayCredentials),
-      );
       const provider = adapterConfig.provider;
       const buildEventBase = (
         input: Omit<
@@ -1276,9 +1256,7 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
             sessionID: context.openCodeSessionId,
           }),
         ).pipe(Effect.ignore({ log: true }));
-        yield* Scope.close(context.sessionScope, Exit.void).pipe(
-          Effect.ensuring(Effect.sync(() => releaseOpenCodeGatewayLease(context))),
-        );
+        yield* Scope.close(context.sessionScope, Exit.void);
       });
 
       const emitAssistantTextDelta = Effect.fn("emitAssistantTextDelta")(function* (
@@ -3390,14 +3368,6 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
           }
 
           const resumedSessionId = extractResumeSessionId(input.resumeCursor);
-          // OpenCode's MCP registry is process/directory scoped, not session
-          // scoped. A gateway token is therefore issued only for a managed
-          // server that this runtime isolates to the exact Synara thread.
-          const agentGatewaySessionLease = serverUrl
-            ? undefined
-            : acquireAgentGatewaySessionLease(agentGatewayCredentials, input.threadId, provider);
-          const agentGatewayConnection = agentGatewaySessionLease?.connection;
-          const poolIsolationKey = agentGatewayConnection ? randomUUID() : undefined;
 
           let sessionScopeTransferred = false;
           const installed = yield* Effect.acquireUseRelease(
@@ -3414,7 +3384,6 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
                       ...(provider === "opencode" && experimentalWebSockets
                         ? { experimentalWebSockets: true }
                         : {}),
-                      ...(poolIsolationKey ? { poolIsolationKey } : {}),
                     });
                     const client = openCodeRuntime.createOpenCodeSdkClient({
                       baseUrl: server.url,
@@ -3422,42 +3391,6 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
                       cliSpec: adapterConfig.cliSpec,
                       ...(server.external && serverPassword ? { serverPassword } : {}),
                     });
-                    const gatewayControlAvailable = agentGatewayConnection
-                      ? yield* runOpenCodeSdk("mcp.add", () =>
-                          client.mcp.add({
-                            directory,
-                            name: SYNARA_MCP_SERVER_NAME,
-                            config: buildOpenCodeMcpServer(agentGatewayConnection),
-                          }),
-                        ).pipe(
-                          Effect.flatMap((result) => {
-                            const status = result.data?.[SYNARA_MCP_SERVER_NAME];
-                            return status?.status === "connected"
-                              ? Effect.void
-                              : Effect.fail(
-                                  new OpenCodeRuntimeError({
-                                    operation: "mcp.add",
-                                    detail:
-                                      status?.status === "failed"
-                                        ? `${adapterConfig.displayName} Synara MCP connection failed: ${status.error}`
-                                        : `${adapterConfig.displayName} Synara MCP connection did not become ready.`,
-                                  }),
-                                );
-                          }),
-                          Effect.as(true),
-                          Effect.catchCause((cause) =>
-                            Effect.sync(() => agentGatewaySessionLease?.release()).pipe(
-                              Effect.andThen(
-                                Effect.logWarning(
-                                  `${adapterConfig.displayName} could not install thread-scoped Synara MCP control`,
-                                  Cause.squash(cause),
-                                ),
-                              ),
-                              Effect.as(false),
-                            ),
-                          ),
-                        )
-                      : false;
                     const createSessionId = resumedSessionId
                       ? // A resumed provider may still be executing an interrupted Plan turn.
                         // Install the read-only ruleset until Synara dispatches a new turn with a
@@ -3527,7 +3460,6 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
                       client,
                       openCodeSessionId,
                       modelContextLimitBySlug,
-                      gatewayControlAvailable,
                     };
                   }).pipe(Effect.provideService(Scope.Scope, sessionScope)),
                 );
@@ -3571,12 +3503,6 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
 
                 const context: OpenCodeSessionContext = {
                   session,
-                  gatewayControlAvailable: started.gatewayControlAvailable,
-                  ...(started.gatewayControlAvailable && agentGatewaySessionLease
-                    ? {
-                        gatewaySessionLease: agentGatewaySessionLease,
-                      }
-                    : {}),
                   ...(input.lifecycleGeneration !== undefined
                     ? { lifecycleGeneration: input.lifecycleGeneration }
                     : {}),
@@ -3626,10 +3552,7 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
             (sessionScope) =>
               sessionScopeTransferred
                 ? Effect.void
-                : Scope.close(sessionScope, Exit.void).pipe(
-                    Effect.ignore,
-                    Effect.ensuring(Effect.sync(() => agentGatewaySessionLease?.release())),
-                  ),
+                : Scope.close(sessionScope, Exit.void).pipe(Effect.ignore),
           );
 
           if (installed.kind === "race-winner") {
@@ -3702,11 +3625,7 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
             issue: `${adapterConfig.displayName} turns require text input or at least one attachment.`,
           });
         }
-        const harnessPolicy = takeSynaraHarnessPolicyForProviderSession(context, {
-          provider,
-          scopedGatewayConnectionAvailable: context.gatewayControlAvailable,
-        });
-        const providerText = [harnessPolicy, text].filter(Boolean).join("\n\n");
+        const providerText = text;
 
         const agent =
           input.modelSelection?.provider === provider

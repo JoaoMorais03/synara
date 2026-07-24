@@ -89,14 +89,7 @@ import {
   Stream,
 } from "effect";
 
-import { buildClaudeMcpServers } from "../../agentGateway/mcpInjection.ts";
-import { renderSynaraHarnessPolicy } from "../../agentGateway/harnessPolicy.ts";
-import { AgentGatewayCredentials } from "../../agentGateway/Services/AgentGatewayCredentials.ts";
 import { PROVIDER_ADAPTER_RUNTIME_EVENT_BUFFER_CAPACITY } from "../Services/ProviderAdapter.ts";
-import {
-  acquireAgentGatewaySessionLease,
-  type AgentGatewaySessionLease,
-} from "../../agentGateway/sessionLease.ts";
 import { resolveProviderAttachmentPath } from "../providerAttachmentPaths.ts";
 import { ServerConfig } from "../../config.ts";
 import { buildFileAttachmentsPromptBlock } from "../attachmentProjection.ts";
@@ -271,7 +264,6 @@ interface ClaudeSubagentRun {
 }
 
 interface ClaudeSessionContext {
-  readonly gatewaySessionLease?: AgentGatewaySessionLease;
   session: ProviderSession;
   readonly lifecycleGeneration?: string;
   readonly promptQueue: Queue.Queue<PromptQueueItem>;
@@ -881,7 +873,7 @@ const CLAUDE_SETTING_SOURCES = [
   "local",
 ] as const satisfies ReadonlyArray<SettingSource>;
 const CLAUDE_CONTEXT_USAGE_TIMEOUT_MS = 1_000;
-export const buildEmbeddedClaudeSystemPromptAppend = (gatewayControlAvailable: boolean) =>
+export const buildEmbeddedClaudeSystemPromptAppend = () =>
   [
     "You are running inside Synara, a coding app that embeds the Claude Agent SDK.",
     "Do not present the host app as Claude Code unless the user is explicitly asking about Claude Code.",
@@ -889,7 +881,6 @@ export const buildEmbeddedClaudeSystemPromptAppend = (gatewayControlAvailable: b
     "When the user asks about the current project, codebase, or repository, proactively inspect files in the current working directory before asking the user where to look.",
     "When spawning subagents, set the Agent tool's `model` parameter and pick reasoning effort by choosing a worker-<tier> subagent type (worker-low, worker-medium, worker-high, worker-xhigh).",
     "Honor explicit user instructions about a subagent's model or effort verbatim; otherwise match task complexity: mechanical work → haiku or worker-low, standard work → sonnet or worker-medium, hard reasoning → opus or fable with worker-high and above.",
-    renderSynaraHarnessPolicy({ gatewayControlAvailable }),
   ].join("\n");
 
 const CLAUDE_WORKER_EFFORT_TIERS = ["low", "medium", "high", "xhigh"] as const;
@@ -1499,11 +1490,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
   return Effect.gen(function* () {
     const fileSystem = yield* FileSystem.FileSystem;
     const serverConfig = yield* ServerConfig;
-    // Optional so adapter tests can run without the gateway layer; when
-    // present, every session gets the synara_* MCP tools.
-    const agentGatewayCredentials = Option.getOrUndefined(
-      yield* Effect.serviceOption(AgentGatewayCredentials),
-    );
     const nativeEventLogger =
       options?.nativeEventLogger ??
       (options?.nativeEventLogPath !== undefined
@@ -3950,7 +3936,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
     ): Effect.Effect<void, ProviderAdapterProcessError> =>
       Effect.gen(function* () {
         context.stopped = true;
-        context.gatewaySessionLease?.release();
 
         for (const [requestId, pending] of context.pendingApprovals) {
           yield* Deferred.succeed(pending.decision, "cancel");
@@ -4506,11 +4491,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
         }
         const processOwner: ClaudeProcessOwner = {};
 
-        const gatewaySessionLease = acquireAgentGatewaySessionLease(
-          agentGatewayCredentials,
-          threadId,
-          PROVIDER,
-        );
         const queryOptions: ClaudeQueryOptions = {
           ...(input.cwd ? { cwd: input.cwd } : {}),
           // Keep Claude context-window selection model-driven so session start
@@ -4521,7 +4501,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
           systemPrompt: {
             type: "preset",
             preset: "claude_code",
-            append: buildEmbeddedClaudeSystemPromptAppend(agentGatewayCredentials !== undefined),
+            append: buildEmbeddedClaudeSystemPromptAppend(),
             // Strip per-user dynamic sections (working directory, auto-memory
             // path) into the first user message so the cached system-prompt
             // prefix stays static across sessions and users. Tradeoff: that
@@ -4553,11 +4533,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
           env: claudeSdkEnv,
           spawnClaudeCodeProcess: bindClaudeProcessOwner(processOwner),
           ...(input.cwd ? { additionalDirectories: [input.cwd] } : {}),
-          ...(agentGatewayCredentials
-            ? {
-                mcpServers: buildClaudeMcpServers(gatewaySessionLease!.connection),
-              }
-            : {}),
         };
 
         const queryRuntime = yield* Effect.try({
@@ -4574,12 +4549,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
               cause,
             }),
         }).pipe(
-          Effect.tapError(() =>
-            Effect.all([
-              teardownClaudeProcess(threadId, processOwner),
-              gatewaySessionLease ? Effect.sync(gatewaySessionLease.release) : Effect.void,
-            ]).pipe(Effect.asVoid),
-          ),
+          Effect.tapError(() => teardownClaudeProcess(threadId, processOwner)),
         );
 
         let installationContext: ClaudeSessionContext | undefined;
@@ -4645,7 +4615,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
           };
 
           const context: ClaudeSessionContext = {
-            ...(gatewaySessionLease ? { gatewaySessionLease } : {}),
             session,
             ...(input.lifecycleGeneration !== undefined
               ? { lifecycleGeneration: input.lifecycleGeneration }
@@ -4790,7 +4759,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
                 }).pipe(Effect.ignore);
               }
               return Effect.gen(function* () {
-                gatewaySessionLease?.release();
                 yield* Queue.shutdown(promptQueue);
                 const closeExit = yield* Effect.exit(Effect.sync(() => queryRuntime.close()));
                 if (Exit.isFailure(closeExit)) {

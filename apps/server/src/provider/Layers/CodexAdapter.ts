@@ -35,7 +35,6 @@ import {
   Effect,
   FileSystem,
   Layer,
-  Option,
   Queue,
   Schema,
   ServiceMap,
@@ -57,8 +56,6 @@ import {
   type CodexAppServerSendTurnInput,
   type CodexAppServerStartSessionInput,
 } from "../../codexAppServerManager.ts";
-import { AgentGatewayCredentials } from "../../agentGateway/Services/AgentGatewayCredentials.ts";
-import { acquireAgentGatewaySessionLease } from "../../agentGateway/sessionLease.ts";
 import { loadProviderPromptImageBlocks } from "../promptAttachments.ts";
 import {
   codexGeneratedImageArtifact,
@@ -1675,11 +1672,6 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
   Effect.gen(function* () {
     const fileSystem = yield* FileSystem.FileSystem;
     const serverConfig = yield* Effect.service(ServerConfig);
-    // Optional so adapter tests can run without the gateway layer; when
-    // present, every session gets the synara_* MCP tools.
-    const agentGatewayCredentials = Option.getOrUndefined(
-      yield* Effect.serviceOption(AgentGatewayCredentials),
-    );
     const nativeEventLogger =
       options?.nativeEventLogger ??
       (options?.nativeEventLogPath !== undefined
@@ -1698,15 +1690,6 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
           options?.makeManager?.(services) ??
           new CodexAppServerManager(services, {
             synaraSkillsDir: synaraSkillsDir(serverConfig.baseDir),
-            ...(agentGatewayCredentials
-              ? {
-                  agentGatewayMcp: {
-                    endpointUrl: () => agentGatewayCredentials.mcpEndpointUrl,
-                    acquireSessionLease: (threadId) =>
-                      acquireAgentGatewaySessionLease(agentGatewayCredentials, threadId, PROVIDER)!,
-                  },
-                }
-              : {}),
           })
         );
       }),

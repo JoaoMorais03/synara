@@ -26,17 +26,18 @@ function iterationLabel(definition: AutomationDefinition, run: AutomationRun): s
   return `${iteration}/${definition.maxIterations ?? "∞"}`;
 }
 
-function reportingInstructions(mode: AutomationDefinition["mode"]): string {
+function runContext(mode: AutomationDefinition["mode"]): string {
   if (mode === "heartbeat") {
     return [
-      "Before finishing, call synara_report_automation_result.",
-      'Use decision "silent" when nothing needs the user\'s attention; otherwise use "notify".',
-      "You may call synara_cancel_automation on this automation when monitoring is no longer needed.",
+      "This is a scheduled Synara automation heartbeat.",
+      "Complete the task using your normal CLI tools only.",
+      "There is no Synara MCP / synara_* tool surface — do not attempt to call one.",
     ].join(" ");
   }
   return [
-    "Before finishing, call synara_report_automation_result with a concise title and summary.",
-    'Use decision "notify" unless the successful run genuinely requires no user attention.',
+    "This is a scheduled Synara automation run.",
+    "Complete the task using your normal CLI tools only.",
+    "There is no Synara MCP / synara_* tool surface — do not attempt to call one.",
   ].join(" ");
 }
 
@@ -53,10 +54,10 @@ export function buildAutomationRunEnvelope(input: {
     `Run: ${run.trigger.type}, scheduled for ${run.scheduledFor} (last run: ${
       input.lastRunAt ?? "never"
     }, iteration ${iterationLabel(definition, run)})`,
-    'Memory (persistent across runs — replace it via synara_update_automation_memory {"memory": "..."} before finishing):',
+    "Memory (context from previous runs; read-only in this harness — do not call Synara tools to update it):",
     automationMemoryForEnvelope(input.memoryContent),
     "",
-    reportingInstructions(definition.mode),
+    runContext(definition.mode),
     "",
     "---",
     "",

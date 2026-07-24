@@ -62,9 +62,10 @@ describe("buildAutomationRunEnvelope", () => {
         "(last run: 2026-07-22T09:00:12.000Z, iteration 3/10)",
     );
     expect(envelope).toContain("Last build was green.");
-    expect(envelope).toContain("call synara_report_automation_result");
-    expect(envelope).toContain('decision "silent"');
-    expect(envelope).toContain("synara_cancel_automation");
+    expect(envelope).toContain("Complete the task using your normal CLI tools only.");
+    expect(envelope).toContain("There is no Synara MCP / synara_* tool surface");
+    expect(envelope).not.toContain("synara_report_automation_result");
+    expect(envelope).not.toContain("synara_cancel_automation");
     expect(envelope.endsWith("---\n\nInspect the latest build.")).toBe(true);
   });
 

@@ -37,8 +37,6 @@ import {
 } from "./codexWorkingDirectory";
 import { CodexJsonlFramer, CodexJsonlWriter } from "./codexAppServerTransport";
 import { ensureIsolatedScratchWorkspace } from "./scratchWorkspaces";
-import { SYNARA_HARNESS_POLICY_MARKER } from "./agentGateway/harnessPolicy.ts";
-import { acquireAgentGatewaySessionLease } from "./agentGateway/sessionLease.ts";
 
 const asThreadId = (value: string): ThreadId => ThreadId.makeUnsafe(value);
 const fullAccessTurnOverrides = {
@@ -50,52 +48,15 @@ const approvalRequiredTurnOverrides = {
   sandboxPolicy: { type: "readOnly" },
 } as const;
 
-describe("Codex Synara harness policy", () => {
-  it("keeps the same host policy exactly once in default and plan instructions", () => {
+describe("Codex developer instructions", () => {
+  it("do not inject Synara MCP / synara_* harness policy", () => {
     for (const instructions of [
       CODEX_DEFAULT_MODE_DEVELOPER_INSTRUCTIONS,
       CODEX_PLAN_MODE_DEVELOPER_INSTRUCTIONS,
     ]) {
-      expect(instructions).toContain(SYNARA_HARNESS_POLICY_MARKER);
-      expect(instructions.split(SYNARA_HARNESS_POLICY_MARKER)).toHaveLength(2);
-      expect(instructions).toContain("Synara is the host and harness");
-      expect(instructions).toContain("one exact synara_create_threads plan");
-    }
-  });
-
-  it("resolves the gateway endpoint when each session environment is built", async () => {
-    const homePath = mkdtempSync(path.join(os.tmpdir(), "synara-codex-gateway-endpoint-"));
-    const previousSynaraHome = process.env.SYNARA_HOME;
-    process.env.SYNARA_HOME = path.join(homePath, "synara-home");
-    let endpointUrl = "http://127.0.0.1:0/mcp";
-    try {
-      const manager = new CodexAppServerManager(undefined, {
-        agentGatewayMcp: {
-          endpointUrl: () => endpointUrl,
-          acquireSessionLease: () => ({
-            connection: { url: endpointUrl, bearerToken: "token" },
-            release: () => undefined,
-          }),
-        },
-      });
-      endpointUrl = "http://127.0.0.1:48123/mcp";
-      const env = await (
-        manager as unknown as {
-          buildSessionProcessEnv: (
-            homePath: string | undefined,
-            token: string | undefined,
-          ) => Promise<NodeJS.ProcessEnv>;
-        }
-      ).buildSessionProcessEnv(homePath, "token");
-      const configPath = path.join(env.CODEX_HOME ?? homePath, "config.toml");
-      expect(readFileSync(configPath, "utf8")).toContain('url = "http://127.0.0.1:48123/mcp"');
-    } finally {
-      if (previousSynaraHome === undefined) {
-        delete process.env.SYNARA_HOME;
-      } else {
-        process.env.SYNARA_HOME = previousSynaraHome;
-      }
-      rmSync(homePath, { recursive: true, force: true });
+      expect(instructions).not.toContain("synara_");
+      expect(instructions).not.toContain("Synara MCP");
+      expect(instructions).toContain("<collaboration_mode>");
     }
   });
 });
@@ -446,20 +407,7 @@ describe("Codex app-server teardown", () => {
     );
     const manager = new CodexAppServerManager(undefined, { teardownProcessTree });
     const threadId = asThreadId("thread-codex-exit-proof");
-    const revokeSessionToken = vi.fn();
-    const gatewaySessionLease = acquireAgentGatewaySessionLease(
-      {
-        connectionForThread: () => ({
-          url: "http://127.0.0.1:48123/mcp",
-          bearerToken: "gateway-token",
-        }),
-        revokeSessionToken,
-      },
-      threadId,
-      "codex",
-    );
     const context = {
-      gatewaySessionLease,
       session: {
         provider: "codex",
         status: "ready",
@@ -489,7 +437,6 @@ describe("Codex app-server teardown", () => {
 
     const stopping = manager.stopSession(threadId);
     await Promise.resolve();
-    expect(revokeSessionToken).toHaveBeenCalledOnce();
     expect(teardownProcessTree).toHaveBeenCalledTimes(1);
     expect(manager.hasSession(threadId)).toBe(true);
     expect(exitProven).toBe(false);
@@ -497,12 +444,11 @@ describe("Codex app-server teardown", () => {
     child.exitCode = 0;
     child.emit("exit", 0, null);
     await stopping;
-    expect(revokeSessionToken).toHaveBeenCalledOnce();
     expect(exitProven).toBe(true);
     expect(manager.hasSession(threadId)).toBe(false);
   });
 
-  it("releases the session lease once when the app-server exits spontaneously", () => {
+  it("removes the session once when the app-server exits spontaneously", () => {
     class FakeCodexChild extends EventEmitter {
       readonly pid = 5252;
       exitCode: number | null = null;
@@ -514,20 +460,7 @@ describe("Codex app-server teardown", () => {
     const child = new FakeCodexChild();
     const manager = new CodexAppServerManager();
     const threadId = asThreadId("thread-codex-spontaneous-exit");
-    const revokeSessionToken = vi.fn();
-    const gatewaySessionLease = acquireAgentGatewaySessionLease(
-      {
-        connectionForThread: () => ({
-          url: "http://127.0.0.1:48123/mcp",
-          bearerToken: "gateway-token",
-        }),
-        revokeSessionToken,
-      },
-      threadId,
-      "codex",
-    );
     const context = {
-      gatewaySessionLease,
       session: {
         provider: "codex",
         status: "ready",
@@ -559,7 +492,6 @@ describe("Codex app-server teardown", () => {
     child.emit("exit", 1, null);
     child.emit("exit", 1, null);
 
-    expect(revokeSessionToken).toHaveBeenCalledOnce();
     expect(manager.hasSession(threadId)).toBe(false);
   });
 });

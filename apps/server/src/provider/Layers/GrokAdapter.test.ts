@@ -6,7 +6,6 @@
 import { TurnId } from "@synara/contracts";
 import { Schema } from "effect";
 import { describe, expect, it } from "vitest";
-import { SYNARA_HARNESS_POLICY_MARKER } from "../../agentGateway/harnessPolicy.ts";
 import {
   extractGrokUserInputQuestions,
   extractGrokExitPlanMarkdown,
@@ -30,18 +29,7 @@ import {
   resolveGrokPlanHookResponse,
   scopeGrokRuntimeItemIdForTurn,
   scopeGrokToolCallStateForTurn,
-  takeGrokSynaraHarnessPolicyTextPart,
 } from "./GrokAdapter.ts";
-
-describe("Grok Synara harness policy", () => {
-  it("delivers private scoped host context once", () => {
-    const state: { harnessPolicyDelivered?: boolean } = {};
-    expect(takeGrokSynaraHarnessPolicyTextPart(state, true)?.text).toContain(
-      SYNARA_HARNESS_POLICY_MARKER,
-    );
-    expect(takeGrokSynaraHarnessPolicyTextPart(state, true)).toBeNull();
-  });
-});
 
 describe("Grok native plan approval", () => {
   it("adds Plan instructions without sending a pager-only slash command as model text", () => {

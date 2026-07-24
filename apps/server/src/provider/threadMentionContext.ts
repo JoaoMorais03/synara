@@ -10,8 +10,8 @@ import {
 import { isThreadMentionPath, threadIdFromThreadMentionPath } from "@synara/shared/threadMentions";
 import { Effect, Option } from "effect";
 
-import { paginateThreadMessages } from "../agentGateway/threadSummary.ts";
 import type { ProjectionSnapshotQueryShape } from "../orchestration/Services/ProjectionSnapshotQuery.ts";
+import { paginateThreadMessages } from "./threadMessagePagination.ts";
 
 export const THREAD_MENTION_MESSAGE_LIMIT = 20;
 export const THREAD_MENTION_MAX_MESSAGE_CHARS = 1_500;

@@ -11,7 +11,7 @@ Synara is a local-first macOS desktop app for coding with the AI agents and subs
 - **macOS desktop only** — Electron shell + local backend. No hosted web product, no marketing site in this repo.
 - **Simple ADE** — start working; avoid configuration sprawl and multi-surface complexity.
 - **Your agents, local** — Claude Code, Codex, Cursor, Grok, OpenCode, and related CLIs you already authorize.
-- **Not an MCP hub** — we do not ship External MCP integrations for other tools to orchestrate Synara remotely.
+- **CLI harness, not agent control plane** — native provider CLIs only. No External MCP hub, no in-app agent gateway MCP, no `synara_*` tools injected into agent sessions.
 - **`apps/web` is not a product** — it is the desktop renderer. The same stack can run in a local browser **for testing only** (see below).
 
 ## What it does
