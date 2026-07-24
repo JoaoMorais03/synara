@@ -1,5 +1,15 @@
 # Contributing
 
+## Product direction (this workspace)
+
+Synara here is steered toward a **simple macOS ADE** — desktop app first.
+
+- Product path: Electron desktop (`bun run dev`)
+- Browser UI (`bun run dev:test`) is a **local test harness only**, not a web product
+- Out of scope unless explicitly requested: marketing site, External MCP hub, public orchestration CLI, multi-platform product expansion
+
+See [docs/plans/008-macos-simple-ade.md](./docs/plans/008-macos-simple-ade.md).
+
 ## Read This First
 
 We are accepting focused contributions, especially small bug fixes, reliability fixes, performance improvements, and maintenance work.
