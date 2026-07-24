@@ -13,13 +13,6 @@ import type {
   AuthWebSocketTokenResult,
 } from "./auth";
 import type {
-  ExternalMcpCreateIntegrationInput,
-  ExternalMcpCreateIntegrationResult,
-  ExternalMcpIntegration,
-  ExternalMcpRefreshPairingInput,
-  ExternalMcpRevokeIntegrationInput,
-} from "./externalMcp";
-import type {
   DatabaseApplyCellEditsInput,
   DatabaseApplyCellEditsResult,
   DatabaseConnection,
@@ -693,16 +686,6 @@ export interface NativeApi {
     revokeAuthClient: (input: AuthRevokeClientSessionInput) => Promise<{ revoked: boolean }>;
     revokeOtherAuthClients: () => Promise<{ revokedCount: number }>;
     logoutAuthSession: () => Promise<AuthLogoutResult>;
-    listExternalMcpIntegrations: () => Promise<ReadonlyArray<ExternalMcpIntegration>>;
-    createExternalMcpIntegration: (
-      input: ExternalMcpCreateIntegrationInput,
-    ) => Promise<ExternalMcpCreateIntegrationResult>;
-    revokeExternalMcpIntegration: (
-      input: ExternalMcpRevokeIntegrationInput,
-    ) => Promise<{ revoked: boolean }>;
-    refreshExternalMcpPairing: (
-      input: ExternalMcpRefreshPairingInput,
-    ) => Promise<ExternalMcpCreateIntegrationResult>;
     refreshProviders: () => Promise<ServerRefreshProvidersResult>;
     updateProvider: (input: ServerProviderUpdateInput) => Promise<ServerProviderUpdateResult>;
     listWorktrees: () => Promise<ServerListWorktreesResult>;

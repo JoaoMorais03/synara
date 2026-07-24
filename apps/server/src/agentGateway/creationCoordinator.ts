@@ -27,11 +27,6 @@ import type {
   AgentGatewayOperationRecord,
   AgentGatewayOperationRepositoryShape,
 } from "./Services/AgentGatewayOperationRepository.ts";
-import type {
-  ExternalMcpRepositoryShape,
-  ExternalMcpOperationRecord,
-} from "../externalMcp/Services/ExternalMcpRepository.ts";
-import { resolveExternalMcpRuntimePolicy } from "../externalMcp/runtimePolicy.ts";
 import {
   canonicalJson,
   gatewayIsoNow,
@@ -80,7 +75,6 @@ interface CreationCoordinatorDependencies {
   readonly git: GitCoreShape;
   readonly providerDiscovery: ProviderDiscoveryServiceShape;
   readonly operationRepository: AgentGatewayOperationRepositoryShape;
-  readonly externalMcpRepository?: ExternalMcpRepositoryShape;
   readonly serverConfig: ServerConfigShape;
   readonly loadProviderAvailabilities: Effect.Effect<
     ReadonlyMap<ProviderKind, AgentGatewayProviderAvailability>,
@@ -91,22 +85,15 @@ interface CreationCoordinatorDependencies {
   ) => Effect.Effect<OrchestrationThreadShell, ToolInputError>;
 }
 
-export type GatewayCreationContext =
-  | {
-      readonly kind: "provider-session";
-      readonly callerThreadId: string;
-      readonly callerTurnId: string | null;
-      readonly assertAuthority: () => Effect.Effect<void, GatewayToolError>;
-    }
-  | {
-      readonly kind: "external-client";
-      readonly integrationId: string;
-      readonly allowedProjectIds: ReadonlySet<string>;
-      readonly capabilities: ReadonlySet<string>;
-      readonly assertAuthority: () => Effect.Effect<void, GatewayToolError>;
-    };
+/** In-app agent gateway only — External MCP product surface is gone. */
+export type GatewayCreationContext = {
+  readonly kind: "provider-session";
+  readonly callerThreadId: string;
+  readonly callerTurnId: string | null;
+  readonly assertAuthority: () => Effect.Effect<void, GatewayToolError>;
+};
 
-type CreationOperationRecord = AgentGatewayOperationRecord | ExternalMcpOperationRecord;
+type CreationOperationRecord = AgentGatewayOperationRecord;
 
 interface CreationOperationStore {
   readonly getExisting: () => Effect.Effect<CreationOperationRecord | null, Error>;
@@ -165,7 +152,6 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
     git,
     providerDiscovery,
     operationRepository,
-    externalMcpRepository,
     serverConfig,
     loadProviderAvailabilities,
     requireThreadShell,
@@ -291,7 +277,7 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
 
   const run = (input: typeof SynaraCreateThreadsInput.Type, context: GatewayCreationContext) => {
     return Effect.gen(function* () {
-      if (context.kind === "provider-session" && context.callerTurnId === null) {
+      if (context.callerTurnId === null) {
         return yield* Effect.fail(
           new GatewayToolError(
             "caller_turn_inactive",
@@ -299,104 +285,45 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
           ),
         );
       }
-      if (context.kind === "external-client" && input.threads.length !== 1) {
-        return yield* Effect.fail(
-          new GatewayToolError(
-            "creation_limit_exceeded",
-            "External MCP integrations may create exactly one task per request.",
-          ),
-        );
-      }
-      const callerTurnId = context.kind === "provider-session" ? context.callerTurnId! : null;
-      const caller =
-        context.kind === "provider-session"
-          ? yield* requireThreadShell(context.callerThreadId)
-          : null;
+      const callerTurnId = context.callerTurnId;
+      const caller = yield* requireThreadShell(context.callerThreadId);
       const operationId = `gateway:create:${stableGatewayDigest({
         principalKind: context.kind,
-        principalId:
-          context.kind === "provider-session" ? context.callerThreadId : context.integrationId,
-        ...(callerTurnId ? { callerTurnId } : {}),
+        principalId: context.callerThreadId,
+        callerTurnId,
         requestId: input.requestId,
       })}`;
       const fingerprint = stableGatewayDigest(input, 64);
-      const externalOperationRepository =
-        context.kind === "external-client" ? externalMcpRepository : undefined;
-      if (context.kind === "external-client" && externalOperationRepository === undefined) {
-        return yield* Effect.fail(
-          new GatewayToolError(
-            "external_mcp_unavailable",
-            "External MCP persistence is unavailable.",
-          ),
-        );
-      }
-      const operationStore: CreationOperationStore =
-        context.kind === "provider-session"
-          ? {
-              getExisting: () =>
-                operationRepository.getByScope({
-                  callerThreadId: context.callerThreadId,
-                  callerTurnId: context.callerTurnId!,
-                  operationKind: "create_threads",
-                }),
-              getById: operationRepository.getById,
-              reserve: (reservation) =>
-                operationRepository.reserve({
-                  ...reservation,
-                  callerThreadId: context.callerThreadId,
-                  callerTurnId: context.callerTurnId!,
-                  operationKind: "create_threads",
-                }),
-              markDispatching: operationRepository.markDispatching,
-              recordWorktreeCreated: operationRepository.recordWorktreeCreated,
-              markCompensating: operationRepository.markCompensating,
-              recordCompensationFailure: operationRepository.recordCompensationFailure,
-              complete: operationRepository.complete,
-              fail: operationRepository.fail,
-              registerTask: () => Effect.void,
-              markTaskStatus: () => Effect.void,
-            }
-          : {
-              getExisting: () =>
-                externalOperationRepository!.getOperationByRequest({
-                  integrationId: context.integrationId,
-                  requestId: input.requestId,
-                }),
-              getById: externalOperationRepository!.getOperationById,
-              reserve: (reservation) =>
-                externalOperationRepository!.reserveOperation({
-                  ...reservation,
-                  integrationId: context.integrationId,
-                  requestedCount: 1,
-                }),
-              markDispatching: externalOperationRepository!.markOperationDispatching,
-              recordWorktreeCreated: externalOperationRepository!.recordOperationWorktreeCreated,
-              markCompensating: externalOperationRepository!.markOperationCompensating,
-              recordCompensationFailure:
-                externalOperationRepository!.recordOperationCompensationFailure,
-              complete: externalOperationRepository!.completeOperation,
-              fail: externalOperationRepository!.failOperation,
-              registerTask: (task) =>
-                externalOperationRepository!.registerTask({
-                  ...task,
-                  integrationId: context.integrationId,
-                }),
-              markTaskStatus: (operationId, status) =>
-                externalOperationRepository!.markTaskStatus({
-                  operationId,
-                  status,
-                  now: gatewayIsoNow(),
-                }),
-            };
+      const operationStore: CreationOperationStore = {
+        getExisting: () =>
+          operationRepository.getByScope({
+            callerThreadId: context.callerThreadId,
+            callerTurnId,
+            operationKind: "create_threads",
+          }),
+        getById: operationRepository.getById,
+        reserve: (reservation) =>
+          operationRepository.reserve({
+            ...reservation,
+            callerThreadId: context.callerThreadId,
+            callerTurnId,
+            operationKind: "create_threads",
+          }),
+        markDispatching: operationRepository.markDispatching,
+        recordWorktreeCreated: operationRepository.recordWorktreeCreated,
+        markCompensating: operationRepository.markCompensating,
+        recordCompensationFailure: operationRepository.recordCompensationFailure,
+        complete: operationRepository.complete,
+        fail: operationRepository.fail,
+        registerTask: () => Effect.void,
+        markTaskStatus: () => Effect.void,
+      };
       const existingOperation = yield* operationStore
         .getExisting()
         .pipe(Effect.mapError((error) => new ToolInputError(errorText(error))));
       if (existingOperation !== null) {
         yield* context.assertAuthority();
-        if (
-          context.kind === "provider-session" &&
-          existingOperation.requestId !== input.requestId
-        ) {
+        if (existingOperation.requestId !== input.requestId) {
           return yield* Effect.fail(
             new GatewayToolError(
               "creation_plan_locked",
@@ -448,25 +375,12 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
           ),
         );
       }
-      const callerIsolatedInWorktree = caller?.envMode === "worktree";
+      const callerIsolatedInWorktree = caller.envMode === "worktree";
       const providerAvailabilities = yield* loadProviderAvailabilities;
 
       const prepared = yield* Effect.forEach(input.threads, (spec, index) =>
         Effect.gen(function* () {
-          if (context.kind === "external-client" && spec.projectId === undefined) {
-            return yield* Effect.fail(
-              new ToolInputError("External MCP task creation requires an explicit projectId."),
-            );
-          }
-          const projectId = ProjectId.makeUnsafe(spec.projectId ?? caller!.projectId);
-          if (context.kind === "external-client" && !context.allowedProjectIds.has(projectId)) {
-            return yield* Effect.fail(
-              new GatewayToolError(
-                "capability_denied",
-                `This integration is not authorized for project "${projectId}".`,
-              ),
-            );
-          }
+          const projectId = ProjectId.makeUnsafe(spec.projectId ?? caller.projectId);
           const project = yield* snapshotQuery.getProjectShellById(projectId).pipe(
             Effect.mapError((error) => new ToolInputError(errorText(error))),
             Effect.flatMap(
@@ -485,18 +399,8 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
               : {}),
             cwd: project.workspaceRoot,
           });
-          const externalPolicy =
-            context.kind === "external-client"
-              ? resolveExternalMcpRuntimePolicy({
-                  ...(spec.environment ? { requestedEnvironment: spec.environment } : {}),
-                  ...(spec.runtimeMode ? { requestedRuntimeMode: spec.runtimeMode } : {}),
-                  capabilities: context.capabilities,
-                })
-              : null;
           const environment =
-            externalPolicy?.environment ??
-            spec.environment ??
-            (callerIsolatedInWorktree ? "worktree" : "local");
+            spec.environment ?? (callerIsolatedInWorktree ? "worktree" : "local");
           if (environment === "local" && callerIsolatedInWorktree) {
             return yield* Effect.fail(
               new ToolInputError(
@@ -504,21 +408,14 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
               ),
             );
           }
-          if (
-            context.kind === "provider-session" &&
-            spec.runtimeMode === "full-access" &&
-            caller!.runtimeMode !== "full-access"
-          ) {
+          if (spec.runtimeMode === "full-access" && caller.runtimeMode !== "full-access") {
             return yield* Effect.fail(
               new ToolInputError(
                 'Your thread runs in "approval-required" mode, so created threads cannot use "full-access".',
               ),
             );
           }
-          const runtimeMode =
-            externalPolicy?.runtimeMode ??
-            spec.runtimeMode ??
-            (context.kind === "external-client" ? "approval-required" : caller!.runtimeMode);
+          const runtimeMode = spec.runtimeMode ?? caller.runtimeMode;
           const title = spec.title ?? buildPromptThreadTitleFallback(spec.prompt);
           let worktreeRef: string | null = null;
           let copyChangesFrom: string | null = null;
@@ -534,7 +431,7 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
             // Always resolve same-project requests from the caller's selected checkout so
             // an explicit baseRef:"HEAD" cannot silently jump back to the primary checkout.
             const sourceCwd =
-              caller?.projectId === projectId
+              caller.projectId === projectId
                 ? (caller.worktreePath ?? project.workspaceRoot)
                 : project.workspaceRoot;
             const pullRequest = parsePullRequestSelector(requestedRef);
@@ -764,7 +661,7 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
           // briefly admit a replacement while this task may still be running.
           yield* operationStore.markTaskStatus(operationId, "failed").pipe(
             Effect.catch((error) =>
-              Effect.logWarning("agent gateway could not mark external task failed", {
+              Effect.logWarning("agent gateway could not mark task failed", {
                 operationId,
                 error: errorText(error),
               }),
@@ -889,7 +786,7 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
             return yield* Effect.fail(
               new GatewayToolError(
                 "concurrency_limited",
-                `This integration already has ${reservation.activeCount} active externally created tasks/operations (limit ${reservation.limit}).`,
+                `This session already has ${reservation.activeCount} active thread-creation operations (limit ${reservation.limit}).`,
               ),
             );
           }
@@ -1049,14 +946,9 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
                       envMode: entry.environment,
                       branch,
                       worktreePath,
-                      creationSource:
-                        context.kind === "external-client" ? "external_mcp" : "synara_mcp",
-                      ...(context.kind === "provider-session"
-                        ? {
-                            sourceThreadId: ThreadId.makeUnsafe(context.callerThreadId),
-                            sourceTurnId: TurnId.makeUnsafe(callerTurnId!),
-                          }
-                        : {}),
+                      creationSource: "synara_mcp",
+                      sourceThreadId: ThreadId.makeUnsafe(context.callerThreadId),
+                      sourceTurnId: TurnId.makeUnsafe(callerTurnId),
                       gatewayOperationId: operationId,
                       gatewayOperationIndex: entry.index,
                       ...(worktreePath !== null
@@ -1150,20 +1042,16 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
 
       if (outcome.kind === "replay") return outcome.result;
       const result = outcome.result;
-      if (context.kind === "provider-session") {
-        yield* appendThreadCreationRecap({
-          callerThreadId: context.callerThreadId,
-          callerTurnId: callerTurnId!,
-          result,
-        });
-      }
+      yield* appendThreadCreationRecap({
+        callerThreadId: context.callerThreadId,
+        callerTurnId,
+        result,
+      });
       return mcpToolResultJson(result);
     }).pipe(
       (effect) =>
         withCreationPlanLock(
-          context.kind === "provider-session"
-            ? `${context.callerThreadId}\u0000${context.callerTurnId ?? "inactive"}`
-            : `${context.integrationId}\u0000${input.requestId}`,
+          `${context.callerThreadId}\u0000${context.callerTurnId ?? "inactive"}`,
           effect,
         ),
       Effect.catch((error) =>

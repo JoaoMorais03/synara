@@ -614,28 +614,6 @@ describe("wsNativeApi", () => {
     expect(requestMock).toHaveBeenCalledWith(WS_METHODS.serverGetEnvironment);
   });
 
-  it("rejects external MCP management after product surface removal", async () => {
-    const { createWsNativeApi } = await import("./wsNativeApi");
-    const api = createWsNativeApi();
-    const createInput = {
-      name: "Desktop MCP",
-      capabilities: ["projects:read", "tasks:create", "tasks:read"] as const,
-      projectIds: [ProjectId.makeUnsafe("project-1")],
-    };
-
-    await expect(api.server.listExternalMcpIntegrations()).rejects.toThrow(/External MCP/);
-    await expect(api.server.createExternalMcpIntegration(createInput)).rejects.toThrow(
-      /External MCP/,
-    );
-    await expect(
-      api.server.revokeExternalMcpIntegration({ integrationId: "integration-1" }),
-    ).rejects.toThrow(/External MCP/);
-    await expect(
-      api.server.refreshExternalMcpPairing({ integrationId: "integration-1" }),
-    ).rejects.toThrow(/External MCP/);
-    expect(requestMock).not.toHaveBeenCalled();
-  });
-
   it("fetches auth session state over HTTP", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(

@@ -32,13 +32,8 @@ export interface ProviderSessionPrincipal {
   readonly turnId: string | null;
 }
 
-export interface ExternalClientPrincipal {
-  readonly kind: "external-client";
-  readonly integrationId: string;
-  readonly name: string;
-}
-
-export type AgentGatewayPrincipal = ProviderSessionPrincipal | ExternalClientPrincipal;
+/** In-app agent gateway principal (External MCP clients removed). */
+export type AgentGatewayPrincipal = ProviderSessionPrincipal;
 
 export interface ToolContext {
   readonly principal: ProviderSessionPrincipal;

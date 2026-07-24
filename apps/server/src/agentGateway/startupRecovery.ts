@@ -29,7 +29,7 @@ export function recoverInterruptedAgentGatewayOperations(input: {
       Error
     >;
   };
-  readonly creationSource?: "synara_mcp" | "external_mcp";
+  readonly creationSource?: "synara_mcp";
   readonly retainOnMissingThreadProjection?: boolean;
   readonly snapshotQuery: ProjectionSnapshotQueryShape;
   readonly orchestrationEngine: OrchestrationEngineShape;

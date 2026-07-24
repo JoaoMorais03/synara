@@ -10,10 +10,12 @@
 | Product surface | macOS desktop ADE only | User direction: no web product, no orchestration CLI, no External MCP hub |
 | `apps/web` | Keep | Electron renderer + **local test harness only** (`bun run dev:test`) |
 | `apps/marketing` | Deleted | No marketing site in repo |
-| External MCP | Product surface removed | UI, CLI pair/serve, RPC fail-closed, HTTP 410; deep server modules deferred |
+| External MCP | **Fully removed** (Phase C) | Folder, contracts, WS/RPC/IPC, layers, HTTP routes, creation dual-path |
+| Internal agent-gateway MCP | **Keep** | `POST /mcp` for in-app agents (`synara_*` tools) — different system |
+| Migrations `074–078`, `080` | **Keep** | Historical SQLite lineage; empty tables cost nothing |
+| `ThreadCreationSource: "external_mcp"` | **Keep literal** | Old projection rows may still carry it |
 | Public package scripts | macOS DMG only | Linux/Windows dist scripts dropped from root package.json |
 | Merge target | Feature branch only | Do not fast-forward fork `main` until user review |
-| Other worktree | `strip-threading-agent-ui` left alone | Separate experiment |
 
 ## Phase A (landed)
 
@@ -31,45 +33,55 @@ Commit: `feat(desktop): focus product on simple macOS ADE`
 
 Commit: `feat(ade): fail-close External MCP product APIs`
 
-- WS RPC External MCP methods fail closed with clear error
-- Web `NativeApi` External MCP methods reject locally (no network)
-- HTTP External MCP routes always return **410 Gone**
-- Route integration tests reduced to fail-closed coverage; body-read unit tests kept
-- This progress note
+- Temporary fail-closed RPC/HTTP (superseded by Phase C full delete)
 
-## Hygiene / polish (landed on same branch)
+## Phase C (landed) — External MCP gut
 
-- Fix `apps/server` database connection store typecheck errors (readonly columns builder + Effect error types)
-- Server `tsc --noEmit` clean after that fix
-- CONTRIBUTING product-direction pointer to this plan
-- Advanced settings session copy: desktop says "app session", not browser/pairing
+Senior-level removal of the entire External MCP product subsystem:
+
+### Deleted
+- Entire `apps/server/src/externalMcp/**` (~28 files)
+- `packages/contracts/src/externalMcp.ts` + index export
+- WS methods / Rpc defs / NativeApi methods for External MCP management
+- `canManageExternalMcp` + fail-closed Phase B handlers
+- Client `wsNativeApi` stubs
+
+### Unwired / simplified
+- `serverLayers.ts` — no ExternalMcp* layers
+- `effectServer.ts` — no `externalMcpRouteLayer`; ServerShape deps cleaned
+- `creationCoordinator.ts` — **provider-session only** (in-app agent gateway)
+- `toolRuntime.ts` — `AgentGatewayPrincipal` = provider session only
+- `serverRuntimeState` — v2 schema, drop `externalMcpRuntimeSecret`
+- `profileStatsArchive` — stop terminalizing `external_mcp_tasks` on purge
+
+### Kept intentionally
+- `apps/server/src/agentGateway/**` including `POST /mcp`
+- Migrations creating `external_mcp_*` tables (historical)
+- `"external_mcp"` creationSource enum for old data
+
+## Hygiene / polish
+
+- DB connection store typecheck fixes
+- CONTRIBUTING product-direction pointer
+- Desktop session wording in Advanced settings
 
 ## Branch commits (ahead of `main`, not merged)
 
-```
-74ba1469 fix(settings): use desktop wording for session sign-out
-4f46ef83 docs: point contributors at simple macOS ADE direction
-b15d3104 fix(database): clear server typecheck for connection store
-a898d6d1 feat(ade): fail-close External MCP product APIs
-14897ede feat(desktop): focus product on simple macOS ADE
-```
+See `git log origin/main..HEAD`. Key Phase C commit: External MCP full gut.
 
 Remote: `origin/feat/macos-simple-ade` on `JoaoMorais03/synara` (fork only).
 
-## Still deferred (Phase C+)
+## Still deferred (Phase D+)
 
-Do **not** do casually without a dedicated pass:
-
-1. **Delete** `apps/server/src/externalMcp/**` and contracts `externalMcp.ts`  
-   - Still wired into `agentGateway/creationCoordinator`, server layers, persistence  
-   - Full gut needs migration/compat plan and broader test rewrite
-2. **Internal agent-gateway MCP** (`POST /mcp` for in-app agent tools)  
-   - Different from External MCP pairing; keep until we redesign agent tooling
-3. **Rename `@synara/cli`** → explicit desktop-backend package name
-4. **Remote auth / pairing URL noise** trim for desktop-only assumption
-5. **Automations** strip or keep (product call)
-6. **CI release.yml** still builds linux/win for upstream compatibility — optional later
-7. Rebrand / rename toward ORCA-style naming (product call)
+| Item | Notes |
+|------|-------|
+| Rename `@synara/cli` → desktop-backend package | Packaging/product naming |
+| DROP TABLE migration for `external_mcp_*` | Optional cleanup; not required for boot |
+| Remote auth / pairing URL trim | Desktop-only assumption pass |
+| Automations strip | Product call |
+| `release.yml` mac-only | CI/upstream compatibility |
+| ORCA rebrand | Product branding |
+| Internal agent-gateway MCP redesign | Different system; keep for in-app agents |
 
 ## How to run
 
@@ -79,6 +91,15 @@ bun run dev          # product: Electron ADE
 bun run dev:test     # testing only: backend + browser, no Electron
 bun run dist:desktop:dmg
 ```
+
+## HTTP surfaces after Phase C
+
+| Path | Status |
+|------|--------|
+| `POST /mcp` | **KEEP** (agent gateway) |
+| `POST /mcp/external` | **GONE** (404) |
+| `/api/mcp/external/*` | **GONE** |
+| WS `server.*ExternalMcp*` | **GONE** from contracts |
 
 ## PR stance
 

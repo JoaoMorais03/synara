@@ -123,10 +123,6 @@ import { makeCursorSafeSnapshotLiveStream } from "./wsSnapshotLiveStream";
 import { PullRequestService } from "./pullRequests/Services/PullRequestService";
 import { resolveGitHubRepository } from "./pullRequests/repositoryResolution";
 
-export function canManageExternalMcp(role: "owner" | "client"): boolean {
-  return role === "owner";
-}
-
 const MAX_DIAGNOSTIC_CHILD_PROCESSES = 80;
 const MAX_DIAGNOSTIC_ARGS_CHARS = 500;
 
@@ -1312,36 +1308,6 @@ const makeWsRpcHandlersLayer = () =>
             "Failed to refresh providers",
           ),
         [WS_METHODS.serverUpdateProvider]: (input) => providerHealth.updateProvider(input),
-        // External MCP product surface removed (simple macOS ADE). Handlers stay
-        // registered so older clients fail closed instead of hanging on unknown methods.
-        [WS_METHODS.serverListExternalMcpIntegrations]: () =>
-          Effect.fail(
-            new WsRpcError({
-              message:
-                "External MCP integrations were removed. Synara is a local macOS ADE only.",
-            }),
-          ),
-        [WS_METHODS.serverCreateExternalMcpIntegration]: () =>
-          Effect.fail(
-            new WsRpcError({
-              message:
-                "External MCP integrations were removed. Synara is a local macOS ADE only.",
-            }),
-          ),
-        [WS_METHODS.serverRevokeExternalMcpIntegration]: () =>
-          Effect.fail(
-            new WsRpcError({
-              message:
-                "External MCP integrations were removed. Synara is a local macOS ADE only.",
-            }),
-          ),
-        [WS_METHODS.serverRefreshExternalMcpPairing]: () =>
-          Effect.fail(
-            new WsRpcError({
-              message:
-                "External MCP integrations were removed. Synara is a local macOS ADE only.",
-            }),
-          ),
         [WS_METHODS.serverListWorktrees]: () =>
           rpcEffect(
             pruneManagedWorktrees.pipe(Effect.map((worktrees) => ({ worktrees }))),

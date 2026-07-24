@@ -3,16 +3,16 @@ import { Effect, FileSystem, Option, Schema } from "effect";
 import { writeFileStringAtomically } from "./atomicWrite";
 import type { ServerConfigShape } from "./config";
 import { formatHostForUrl, isWildcardHost } from "./startupAccess";
-import { externalMcpRuntimeSecret } from "./externalMcp/runtimeProof.ts";
 
+// v2 drops External MCP runtime proof (product surface removed). Decode failures
+// on legacy v1 files fall through to Option.none in readPersistedServerRuntimeState.
 export const PersistedServerRuntimeState = Schema.Struct({
-  version: Schema.Literal(1),
+  version: Schema.Literal(2),
   pid: Schema.Int,
   host: Schema.optional(Schema.String),
   port: Schema.Int,
   origin: Schema.String,
   startedAt: Schema.String,
-  externalMcpRuntimeSecret: Schema.String,
 });
 export type PersistedServerRuntimeState = typeof PersistedServerRuntimeState.Type;
 
@@ -33,13 +33,12 @@ export const makePersistedServerRuntimeState = (input: {
   readonly config: Pick<ServerConfigShape, "host">;
   readonly port: number;
 }): PersistedServerRuntimeState => ({
-  version: 1,
+  version: 2,
   pid: process.pid,
   ...(input.config.host ? { host: input.config.host } : {}),
   port: input.port,
   origin: runtimeOriginForConfig(input.config, input.port),
   startedAt: new Date().toISOString(),
-  externalMcpRuntimeSecret,
 });
 
 export const persistServerRuntimeState = (input: {

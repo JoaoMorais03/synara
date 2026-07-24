@@ -16,9 +16,6 @@ import {
   type AuthRevokePairingLinkInput,
   type AuthSessionState,
   type AuthWebSocketTokenResult,
-  type ExternalMcpCreateIntegrationInput,
-  type ExternalMcpRefreshPairingInput,
-  type ExternalMcpRevokeIntegrationInput,
   type ThreadId,
   type ThreadBrowserState,
   type GitActionProgressEvent,
@@ -612,31 +609,6 @@ export function createWsNativeApi(): NativeApi {
         await transport.dispose();
         return result;
       },
-      // Product surface removed — kept on NativeApi for type compatibility only.
-      listExternalMcpIntegrations: () =>
-        Promise.reject(
-          new Error(
-            "External MCP integrations were removed. Synara is a local macOS ADE only.",
-          ),
-        ),
-      createExternalMcpIntegration: (_input: ExternalMcpCreateIntegrationInput) =>
-        Promise.reject(
-          new Error(
-            "External MCP integrations were removed. Synara is a local macOS ADE only.",
-          ),
-        ),
-      revokeExternalMcpIntegration: (_input: ExternalMcpRevokeIntegrationInput) =>
-        Promise.reject(
-          new Error(
-            "External MCP integrations were removed. Synara is a local macOS ADE only.",
-          ),
-        ),
-      refreshExternalMcpPairing: (_input: ExternalMcpRefreshPairingInput) =>
-        Promise.reject(
-          new Error(
-            "External MCP integrations were removed. Synara is a local macOS ADE only.",
-          ),
-        ),
       refreshProviders: () => transport.request(WS_METHODS.serverRefreshProviders),
       // Provider updates run up to 2 minutes server-side; callers wrap this in
       // withProviderUpdateTimeout, which owns the client-side watchdog.

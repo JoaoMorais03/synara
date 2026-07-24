@@ -3,12 +3,7 @@ import { Effect } from "effect";
 import { vi } from "vitest";
 
 import { AuthError } from "./auth/Services/ServerAuth";
-import { authenticateRpcWebSocketUpgrade, canManageExternalMcp } from "./wsRpc";
-
-it("reserves external MCP management for owner sessions", () => {
-  assert.isTrue(canManageExternalMcp("owner"));
-  assert.isFalse(canManageExternalMcp("client"));
-});
+import { authenticateRpcWebSocketUpgrade } from "./wsRpc";
 
 it.effect("rejects an unauthorized websocket upgrade on a non-loopback bind", () =>
   Effect.gen(function* () {
