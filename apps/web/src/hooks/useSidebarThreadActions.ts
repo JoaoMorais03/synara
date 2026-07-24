@@ -17,6 +17,7 @@ import {
   derivePinnedThreadIdsForSidebar,
   isLatestPinnedThreadMutation,
 } from "../components/Sidebar.logic";
+import { persistSidebarUiState, readSidebarUiState } from "../components/Sidebar.uiState";
 import { toastManager } from "../components/ui/toast";
 import { deleteActiveThreadFromClient } from "../lib/activeThreadDelete";
 import { reconcileDeletedThreadsFromClient } from "../lib/deletedThreadClientReconciliation";
@@ -58,7 +59,8 @@ export function useSidebarThreadActions(input: {
     "confirmThreadArchive" | "confirmThreadDelete" | "sidebarThreadSortOrder"
   >;
   readonly clearTerminalState: (threadId: ThreadId) => void;
-  readonly handleNewChat: (options?: { fresh?: boolean }) => Promise<unknown>;
+  /** Studio container project ids — empty archive/delete falls back to /studio, not a new agent chat. */
+  readonly studioProjectIds?: ReadonlySet<ProjectId>;
   readonly projectById: ReadonlyMap<ProjectId, Project>;
   readonly routeSplitViewId: string | null;
   readonly routeThreadId: ThreadId | null;
@@ -71,7 +73,7 @@ export function useSidebarThreadActions(input: {
     activeSplitView,
     appSettings,
     clearTerminalState,
-    handleNewChat,
+    studioProjectIds,
     projectById,
     routeSplitViewId,
     routeThreadId,
@@ -81,6 +83,24 @@ export function useSidebarThreadActions(input: {
     threadsHydrated,
   } = input;
   const navigate = useNavigate();
+  const navigateEmptyFallback = useCallback(
+    async (projectId: ProjectId) => {
+      // Clear restore memory so `/` does not dump into leftover home Groks.
+      const sidebarUi = readSidebarUiState();
+      if (sidebarUi.lastThreadRoute) {
+        persistSidebarUiState({
+          ...sidebarUi,
+          lastThreadRoute: null,
+        });
+      }
+      if (studioProjectIds?.has(projectId)) {
+        await navigate({ to: "/studio", replace: true });
+        return;
+      }
+      await navigate({ to: "/", replace: true });
+    },
+    [navigate, studioProjectIds],
+  );
   const queryClient = useQueryClient();
   const removeWorktreeMutation = useMutation(gitRemoveWorktreeMutationOptions({ queryClient }));
   const clearComposerDraftForThread = useComposerDraftStore((store) => store.clearDraftThread);
@@ -314,7 +334,7 @@ export function useSidebarThreadActions(input: {
                 replace: true,
               });
             } else if (prepared.shouldNavigateToFallback) {
-              void handleNewChat({ fresh: true });
+              void navigateEmptyFallback(thread.projectId);
             }
           } else if (prepared?.shouldNavigateToFallback) {
             if (prepared.fallbackThreadId) {
@@ -324,7 +344,7 @@ export function useSidebarThreadActions(input: {
                 replace: true,
               });
             } else {
-              void handleNewChat({ fresh: true });
+              void navigateEmptyFallback(thread.projectId);
             }
           }
         },
@@ -338,8 +358,8 @@ export function useSidebarThreadActions(input: {
       clearProjectDraftThreadById,
       clearTemporaryThread,
       clearTerminalState,
-      handleNewChat,
       navigate,
+      navigateEmptyFallback,
       removeThreadFromSplitViews,
       removeWorktreeMutation,
       routeSplitViewId,
@@ -381,6 +401,7 @@ export function useSidebarThreadActions(input: {
       pendingThreadIds.add(threadId);
       const runArchive = async (): Promise<boolean> => {
         await archiveThreadFromClient(api.orchestration, threadId);
+        clearTerminalState(threadId);
         if (routeThreadId === threadId) {
           const fallbackThreadId = getFallbackThreadIdAfterDelete({
             threads: sidebarThreads,
@@ -395,7 +416,7 @@ export function useSidebarThreadActions(input: {
               replace: true,
             });
           } else {
-            await handleNewChat({ fresh: true });
+            await navigateEmptyFallback(thread.projectId);
           }
         }
         return true;
@@ -404,7 +425,15 @@ export function useSidebarThreadActions(input: {
         pendingThreadIds.delete(threadId);
       });
     },
-    [appSettings.sidebarThreadSortOrder, handleNewChat, routeThreadId, sidebarThreads, navigate],
+    [
+      appSettings.sidebarThreadSortOrder,
+      clearTerminalState,
+      navigate,
+      navigateEmptyFallback,
+      routeThreadId,
+      sidebarThreads,
+      studioProjectIds,
+    ],
   );
 
   const restoreArchivedThreadFromToast = useCallback(

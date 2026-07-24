@@ -24,7 +24,6 @@ import {
   noopChatSurfaceAction,
 } from "./ChatThreadSurfacePrimitives";
 import { useBrowserPanelDesktopBridge } from "../../hooks/useBrowserPanelDesktopBridge";
-import { useHandleNewChat } from "../../hooks/useHandleNewChat";
 import type { ChatRightPanel } from "../../diffRouteSearch";
 import { stripDiffSearchParams } from "../../diffRouteSearch";
 import {
@@ -581,7 +580,6 @@ function SplitPaneSurface(props: {
 
 export function SplitChatSurface(props: { splitViewId: SplitViewId; routeThreadId: ThreadId }) {
   const navigate = useNavigate();
-  const { handleNewChat } = useHandleNewChat();
   const selectAllThreads = createAllThreadsSelector();
   const threads = useStore(selectAllThreads);
   const projects = useStore((store) => store.projects);
@@ -622,7 +620,7 @@ export function SplitChatSurface(props: { splitViewId: SplitViewId; routeThreadI
       removeSplitView(activeSplitView.id);
       const fallbackThreadId = onlyThreadId ?? props.routeThreadId;
       if (!fallbackThreadId) {
-        void handleNewChat({ fresh: true });
+        void navigate({ to: "/", replace: true });
         return;
       }
       void navigate({
@@ -664,7 +662,6 @@ export function SplitChatSurface(props: { splitViewId: SplitViewId; routeThreadI
     }
   }, [
     activeSplitView,
-    handleNewChat,
     navigate,
     props.routeThreadId,
     removeSplitView,
@@ -761,7 +758,7 @@ export function SplitChatSurface(props: { splitViewId: SplitViewId; routeThreadI
     }
 
     removeSplitView(activeSplitView.id);
-    void handleNewChat({ fresh: true });
+    void navigate({ to: "/", replace: true });
   };
 
   const closePaneThread = (paneId: PaneId) => {
@@ -839,7 +836,7 @@ export function SplitChatSurface(props: { splitViewId: SplitViewId; routeThreadI
       return;
     }
 
-    void handleNewChat({ fresh: true });
+    void navigate({ to: "/", replace: true });
   };
 
   const handleSetRatio = (nodeId: PaneId, ratio: number) => {

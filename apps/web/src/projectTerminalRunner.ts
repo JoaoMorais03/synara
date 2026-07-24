@@ -6,6 +6,7 @@
 import type { NativeApi, TerminalSessionSnapshot, ThreadId } from "@synara/contracts";
 import {
   deriveTerminalCommandIdentity,
+  SYNARA_TERMINAL_CLI_KIND_ENV_KEY,
   type TerminalCliKind,
 } from "@synara/shared/terminalThreads";
 
@@ -28,19 +29,25 @@ export async function runProjectCommandInTerminal(input: {
   command: string;
   worktreePath?: string | null;
   env?: Record<string, string>;
+  /** Force PTY identity even before the CLI process is detected. */
+  cliKind?: TerminalCliKind | null;
 }): Promise<{
   snapshot: TerminalSessionSnapshot;
   metadata: ProjectCommandTerminalMetadata | null;
 }> {
+  const terminalCommandIdentity = deriveTerminalCommandIdentity(input.command);
+  const cliKind = input.cliKind ?? terminalCommandIdentity?.cliKind ?? null;
   const runtimeEnv = projectScriptRuntimeEnv({
     project: {
       cwd: input.project.cwd,
     },
     worktreePath: input.worktreePath ?? null,
-    ...(input.env ? { extraEnv: input.env } : {}),
+    extraEnv: {
+      ...(cliKind ? { [SYNARA_TERMINAL_CLI_KIND_ENV_KEY]: cliKind } : {}),
+      ...(input.env ?? {}),
+    },
   });
-  const terminalCommandIdentity = deriveTerminalCommandIdentity(input.command);
-  const snapshot = await input.api.terminal.open({
+  let snapshot = await input.api.terminal.open({
     threadId: input.threadId,
     terminalId: input.terminalId,
     cwd: input.cwd,
@@ -48,6 +55,20 @@ export async function runProjectCommandInTerminal(input: {
     cols: PROJECT_COMMAND_TERMINAL_COLS,
     rows: PROJECT_COMMAND_TERMINAL_ROWS,
   });
+
+  // ChatView often opens the default terminal at the project cwd first. Re-open
+  // requests ignore cwd changes on a live PTY, so restart when we need a different root.
+  if (snapshot.cwd !== input.cwd) {
+    snapshot = await input.api.terminal.restart({
+      threadId: input.threadId,
+      terminalId: input.terminalId,
+      cwd: input.cwd,
+      env: runtimeEnv,
+      cols: PROJECT_COMMAND_TERMINAL_COLS,
+      rows: PROJECT_COMMAND_TERMINAL_ROWS,
+    });
+  }
+
   await input.api.terminal.write({
     threadId: input.threadId,
     terminalId: input.terminalId,
@@ -61,6 +82,11 @@ export async function runProjectCommandInTerminal(input: {
           cliKind: terminalCommandIdentity.cliKind,
           label: terminalCommandIdentity.title,
         }
-      : null,
+      : cliKind
+        ? {
+            cliKind,
+            label: cliKind,
+          }
+        : null,
   };
 }

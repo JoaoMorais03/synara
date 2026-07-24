@@ -139,12 +139,14 @@ import {
 } from "../lib/providerModelPrefetch";
 import { serverConfigQueryOptions } from "../lib/serverReactQuery";
 import { readNativeApi } from "../nativeApi";
-import { isHomeChatContainerProject, prewarmHomeChatProject } from "../lib/chatProjects";
+import { ensureHomeChatProject, isHomeChatContainerProject, prewarmHomeChatProject } from "../lib/chatProjects";
 import {
   collectStudioProjectIds,
+  ensureStudioProject,
   isStudioContainerProject,
   prewarmStudioProject,
 } from "../lib/studioProjects";
+import { SidebarPrimaryCliAction } from "./SidebarPrimaryCliAction";
 import { useComposerDraftStore } from "../composerDraftStore";
 import { useLatestProjectStore } from "../latestProjectStore";
 import { resolveThreadEnvironmentPresentation } from "../lib/threadEnvironment";
@@ -177,6 +179,7 @@ import {
 } from "./sidebarHoverCardAnchors";
 import { PreviewCard, PreviewCardPopup, PreviewCardTrigger } from "./ui/preview-card";
 import { SidebarIconButton } from "./SidebarIconButton";
+import { SidebarNewCliThreadControl } from "./SidebarNewCliThreadControl";
 import { SidebarLeadingIcon } from "./SidebarLeadingIcon";
 import { SidebarMetaChipStack } from "./SidebarMetaChip";
 import { SidebarRowHoverActions } from "./SidebarRowHoverActions";
@@ -198,6 +201,8 @@ import {
 import { useHandleNewChat } from "../hooks/useHandleNewChat";
 import { useHandleNewStudioChat } from "../hooks/useHandleNewStudioChat";
 import { useHandleNewThread } from "../hooks/useHandleNewThread";
+import { useProviderStatusesForLocalConfig } from "../hooks/useProviderStatusesForLocalConfig";
+import { useStartBareCliThread } from "../hooks/useStartBareCliThread";
 import { useThreadHandoff } from "../hooks/useThreadHandoff";
 import { useFeedbackDialogStore } from "../feedbackDialogStore";
 import { selectThreadTerminalState, useTerminalStateStore } from "../terminalStateStore";
@@ -816,7 +821,7 @@ function ThreadPrStatusBadge({
 
 type SortableProjectHandleProps = Pick<
   ReturnType<typeof useSortable>,
-  "attributes" | "listeners" | "setActivatorNodeRef"
+  "attributes" | "listeners" | "setActivatorNodeRef" | "isDragging"
 >;
 
 function ProjectSortMenu({
@@ -1028,7 +1033,7 @@ function SortableProjectItem({
       data-sidebar="menu-item"
       data-slot="sidebar-menu-item"
     >
-      {children({ attributes, listeners, setActivatorNodeRef })}
+      {children({ attributes, listeners, setActivatorNodeRef, isDragging })}
     </li>
   );
 }
@@ -1204,7 +1209,7 @@ function SortableWorkspaceItem({
       data-sidebar="menu-item"
       data-slot="sidebar-menu-item"
     >
-      {children({ attributes, listeners, setActivatorNodeRef })}
+      {children({ attributes, listeners, setActivatorNodeRef, isDragging })}
     </li>
   );
 }
@@ -1322,6 +1327,8 @@ export default function Sidebar() {
   const { handleNewThread } = useHandleNewThread();
   const { handleNewChat } = useHandleNewChat();
   const { handleNewStudioChat } = useHandleNewStudioChat();
+  const { startBareCliThread } = useStartBareCliThread();
+  const providerStatuses = useProviderStatusesForLocalConfig();
   const { createThreadHandoff } = useThreadHandoff();
   const routeThreadId = useParams({
     strict: false,
@@ -1613,7 +1620,7 @@ export default function Sidebar() {
     activeSplitView,
     appSettings,
     clearTerminalState,
-    handleNewChat,
+    studioProjectIds: studioProjectIdSet,
     projectById,
     routeSplitViewId: routeSearch.splitViewId ?? null,
     routeThreadId,
@@ -1929,17 +1936,10 @@ export default function Sidebar() {
         return true;
       }
 
-      void handleNewThread(projectId, {
-        envMode: appSettings.defaultThreadEnvMode,
-      }).catch(() => undefined);
+      void startBareCliThread({ projectId }).catch(() => undefined);
       return true;
     },
-    [
-      appSettings.defaultThreadEnvMode,
-      appSettings.sidebarThreadSortOrder,
-      handleNewThread,
-      navigate,
-    ],
+    [appSettings.sidebarThreadSortOrder, navigate, startBareCliThread],
   );
 
   const openExistingProjectFromSnapshot = useCallback(
@@ -1972,18 +1972,10 @@ export default function Sidebar() {
       }
 
       setProjectExpanded(projectId, true);
-      void handleNewThread(projectId, {
-        envMode: appSettings.defaultThreadEnvMode,
-      }).catch(() => undefined);
+      void startBareCliThread({ projectId }).catch(() => undefined);
       return true;
     },
-    [
-      appSettings.defaultThreadEnvMode,
-      appSettings.sidebarThreadSortOrder,
-      handleNewThread,
-      navigate,
-      setProjectExpanded,
-    ],
+    [appSettings.sidebarThreadSortOrder, navigate, setProjectExpanded, startBareCliThread],
   );
 
   // Poll the server read model briefly after project.create so we only recover from fresh state.
@@ -2121,17 +2113,7 @@ export default function Sidebar() {
   );
 
   // Fresh unsent chats have a route id but no persisted sidebar summary yet. Keep those draft
-  // routes valid return targets — scoped to whichever segment the draft's project belongs to —
-  // for both the settings back button and the segment switcher.
-  const studioDraftThreadIds = useMemo(() => {
-    const draftThreadIds = new Set<string>();
-    for (const [threadId, draft] of Object.entries(draftThreadsByThreadId)) {
-      if (studioProjectIdSet.has(draft.projectId)) {
-        draftThreadIds.add(threadId);
-      }
-    }
-    return draftThreadIds;
-  }, [draftThreadsByThreadId, studioProjectIdSet]);
+  // routes valid return targets for the Threads segment (and settings back from Threads).
   const nonStudioDraftThreadIds = useMemo(() => {
     const draftThreadIds = new Set<string>();
     for (const [threadId, draft] of Object.entries(draftThreadsByThreadId)) {
@@ -2142,19 +2124,23 @@ export default function Sidebar() {
     return draftThreadIds;
   }, [draftThreadsByThreadId, studioProjectIdSet]);
 
-  // Where the Studio segment lands, resolved directly (remembered Studio route, else the latest
-  // Studio chat) instead of bouncing through the "/studio" splash route — that extra hop +
-  // async redirect is what made the segment switch feel sluggish. Mirrors
-  // resolveBackToThreadsTarget so both segments restore the thread you were last on.
-  // Archived chats are excluded, matching the /studio landing: the sidebar hides them, so
-  // neither the segment switch nor settings back may resurrect one.
+  // Where the Studio segment lands: remembered bare-CLI route, else latest terminal session.
+  // Agent-chat drafts are intentionally excluded — Studio is CLI-only and empty means /studio.
   const activeStudioSidebarThreads = useMemo(
-    () => studioSidebarThreads.filter((thread) => (thread.archivedAt ?? null) === null),
-    [studioSidebarThreads],
+    () =>
+      studioSidebarThreads.filter((thread) => {
+        if ((thread.archivedAt ?? null) !== null) {
+          return false;
+        }
+        return (
+          selectThreadTerminalState(terminalStateByThreadId, thread.id).entryPoint === "terminal"
+        );
+      }),
+    [studioSidebarThreads, terminalStateByThreadId],
   );
   const resolveBackToStudioTarget = useCallback(
-    () => resolveBackTargetForThreads(activeStudioSidebarThreads, studioDraftThreadIds),
-    [activeStudioSidebarThreads, resolveBackTargetForThreads, studioDraftThreadIds],
+    () => resolveBackTargetForThreads(activeStudioSidebarThreads),
+    [activeStudioSidebarThreads, resolveBackTargetForThreads],
   );
 
   const resolveBackToThreadsTarget = useCallback(
@@ -2202,16 +2188,10 @@ export default function Sidebar() {
     lastActiveSidebarSegmentRef.current = isOnStudio ? "studio" : "threads";
   }, [isOnSettings, isOnStudio]);
 
-  // Shared Studio fallback: reopen/create via handleNewStudioChat and, on failure, land on
-  // /studio — its splash already displays the error with a retry. Swallowing the result here
-  // would make the segment click appear dead and hide the cross-kind conflict message.
+  // Shared Studio fallback: empty Studio lands on /studio (no agent-composer draft).
   const openStudioChatFallback = useCallback(() => {
-    void handleNewStudioChat().then((result) => {
-      if (!result.ok) {
-        void navigate({ to: "/studio" });
-      }
-    });
-  }, [handleNewStudioChat, navigate]);
+    void navigate({ to: "/studio" });
+  }, [navigate]);
 
   const handleBackToAppFromSettings = useCallback(() => {
     const fromStudio = lastActiveSidebarSegmentRef.current === "studio";
@@ -2247,10 +2227,7 @@ export default function Sidebar() {
         return;
       }
       if (view === "studio") {
-        // Remembered route first — it already treats the stored Studio draft as a valid target
-        // (resolveBackToStudioTarget includes studioDraftThreadIds), so switching back to Studio
-        // returns to the thread you were on, not an old empty draft. handleNewStudioChat stays
-        // the fallback and reopens the stored draft when there is nothing to restore.
+        // Remembered bare-CLI route first; otherwise land on empty Studio — never spawn agent chat.
         if (navigateToBackTarget(resolveBackToStudioTarget())) {
           return;
         }
@@ -2319,14 +2296,52 @@ export default function Sidebar() {
     prewarmStudioProject({ homeDir, chatWorkspaceRoot, studioWorkspaceRoot });
   }, [chatWorkspaceRoot, homeDir, studioSectionVisible, studioWorkspaceRoot, threadsHydrated]);
 
-  // Opens a fresh home-chat draft directly on the draft thread route so the first send
-  // does not need a second route swap from "/" to "/$threadId".
+  // Opens a terminal-first home thread and launches the favorite CLI (no Synara agent chat UI).
   const handleCreateHomeChat = useCallback(async () => {
-    await handleNewChat({ fresh: true });
-  }, [handleNewChat]);
-  const handleCreateStudioChat = useCallback(async () => {
-    await handleNewStudioChat({ fresh: true });
-  }, [handleNewStudioChat]);
+    if (!homeDir) {
+      await handleNewChat({ fresh: true });
+      return;
+    }
+    const homeProjectId = await ensureHomeChatProject({ homeDir, chatWorkspaceRoot }).catch(
+      () => null,
+    );
+    if (!homeProjectId) {
+      await handleNewChat({ fresh: true });
+      return;
+    }
+    await startBareCliThread({ projectId: homeProjectId, cwd: homeDir });
+  }, [chatWorkspaceRoot, handleNewChat, homeDir, startBareCliThread]);
+
+  const handleCreateStudioChat = useCallback(
+    async (provider?: ProviderKind) => {
+      if (!homeDir) {
+        await handleNewStudioChat({ fresh: true });
+        return;
+      }
+      const studioProjectId = await ensureStudioProject({
+        homeDir,
+        chatWorkspaceRoot,
+        studioWorkspaceRoot,
+      }).catch(() => null);
+      if (!studioProjectId) {
+        await handleNewStudioChat({ fresh: true });
+        return;
+      }
+      await startBareCliThread({
+        projectId: studioProjectId,
+        cwd: homeDir,
+        ...(provider ? { provider } : {}),
+      });
+    },
+    [
+      appSettings.defaultProvider,
+      chatWorkspaceRoot,
+      handleNewStudioChat,
+      homeDir,
+      startBareCliThread,
+      studioWorkspaceRoot,
+    ],
+  );
 
   const beginWorkspaceRename = useCallback((workspaceId: string, title: string) => {
     setRenamingWorkspaceId(workspaceId);
@@ -2473,9 +2488,7 @@ export default function Sidebar() {
         // snapshot is just slow to catch up, continue with the local new-thread flow
         // instead of surfacing a false-negative sidebar sync error.
         setProjectExpanded(creationResult.projectId, true);
-        void handleNewThread(creationResult.projectId, {
-          envMode: appSettings.defaultThreadEnvMode,
-        }).catch(() => undefined);
+        void startBareCliThread({ projectId: creationResult.projectId }).catch(() => undefined);
         finishAddingProject();
         return;
       } catch (error) {
@@ -2486,8 +2499,6 @@ export default function Sidebar() {
       }
     },
     [
-      appSettings.defaultThreadEnvMode,
-      handleNewThread,
       isAddingProject,
       projects,
       recoverExistingProjectFromServer,
@@ -2495,6 +2506,7 @@ export default function Sidebar() {
       openOrCreateProjectThreadFromSnapshot,
       openExistingProjectFromSnapshot,
       setProjectExpanded,
+      startBareCliThread,
       syncServerShellSnapshot,
     ],
   );
@@ -2575,12 +2587,7 @@ export default function Sidebar() {
 
   const handlePrimaryNewThread = useCallback(() => {
     if (primaryNewThreadTarget) {
-      prefetchModelsForProjectNewThread(primaryNewThreadTarget.projectId);
-      void handleNewThread(primaryNewThreadTarget.projectId, {
-        envMode: resolveSidebarNewThreadEnvMode({
-          defaultEnvMode: appSettings.defaultThreadEnvMode,
-        }),
-      });
+      void startBareCliThread({ projectId: primaryNewThreadTarget.projectId });
       return;
     }
 
@@ -2590,14 +2597,7 @@ export default function Sidebar() {
       return;
     }
     handleStartAddProject();
-  }, [
-    appSettings.defaultThreadEnvMode,
-    handleNewThread,
-    handleStartAddProject,
-    prefetchModelsForProjectNewThread,
-    primaryNewThreadTarget,
-    threadsHydrated,
-  ]);
+  }, [handleStartAddProject, primaryNewThreadTarget, startBareCliThread, threadsHydrated]);
 
   const handleImportThread = useCallback(
     async (provider: ImportProviderKind, externalId: string) => {
@@ -3366,7 +3366,9 @@ export default function Sidebar() {
 
   const projectDnDSensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: { distance: 6 },
+      // Click expands; press-and-hold then move reorders. Distance-only (6px) was
+      // firing drag on ordinary clicks with tiny pointer jitter.
+      activationConstraint: { delay: 220, tolerance: 8 },
     }),
   );
   const projectCollisionDetection = useCallback<CollisionDetection>((args) => {
@@ -3408,6 +3410,7 @@ export default function Sidebar() {
 
   const handleProjectDragCancel = useCallback((_event: DragCancelEvent) => {
     dragInProgressRef.current = false;
+    suppressProjectClickAfterDragRef.current = false;
   }, []);
 
   const animatedProjectListsRef = useRef(new WeakSet<HTMLElement>());
@@ -4294,6 +4297,11 @@ export default function Sidebar() {
               thread={thread}
               primarySurface={threadEntryPoint}
               terminalEntryPoint={threadEntryPoint === "terminal"}
+              terminalCliKind={
+                threadTerminalState.terminalCliKindsById[
+                  threadTerminalState.activeTerminalId
+                ] ?? null
+              }
               terminalStatus={terminalStatus}
               terminalCount={terminalCount}
               isActive={isActive}
@@ -4490,6 +4498,11 @@ export default function Sidebar() {
               thread={thread}
               primarySurface={threadEntryPoint}
               terminalEntryPoint={threadEntryPoint === "terminal"}
+              terminalCliKind={
+                threadTerminalState.terminalCliKindsById[
+                  threadTerminalState.activeTerminalId
+                ] ?? null
+              }
               terminalStatus={terminalStatus}
               terminalCount={terminalCount}
               isActive={isActive}
@@ -4596,7 +4609,8 @@ export default function Sidebar() {
               className={cn(
                 SIDEBAR_HEADER_ROW_CLASS_NAME,
                 "hover:bg-[var(--sidebar-accent)] group-hover/project-header:bg-[var(--sidebar-accent)] group-hover/project-header:text-[var(--sidebar-accent-foreground)]",
-                isManualProjectSorting ? "cursor-grab active:cursor-grabbing" : "cursor-pointer",
+                "cursor-pointer",
+                isManualProjectSorting && dragHandleProps?.isDragging && "cursor-grabbing",
               )}
               {...(isManualProjectSorting && dragHandleProps ? dragHandleProps.attributes : {})}
               {...(isManualProjectSorting && dragHandleProps ? dragHandleProps.listeners : {})}
@@ -4755,29 +4769,14 @@ export default function Sidebar() {
                   });
                 }}
               />
-              <SidebarIconButton
-                icon={NewThreadIcon}
-                label={`Create new thread in ${project.name}`}
-                tooltip={
-                  newThreadShortcutLabel ? `New thread (${newThreadShortcutLabel})` : "New thread"
-                }
-                tooltipSide="top"
-                data-testid="new-thread-button"
-                onMouseEnter={() => {
-                  prefetchModelsForProjectNewThread(project.id);
-                }}
-                onFocus={() => {
-                  prefetchModelsForProjectNewThread(project.id);
-                }}
-                onClick={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  prefetchModelsForProjectNewThread(project.id);
-                  void handleNewThread(project.id, {
-                    envMode: resolveSidebarNewThreadEnvMode({
-                      defaultEnvMode: appSettings.defaultThreadEnvMode,
-                    }),
-                  });
+              <SidebarNewCliThreadControl
+                projectId={project.id}
+                projectName={project.name}
+                favoriteProvider={appSettings.defaultProvider}
+                providerStatuses={providerStatuses}
+                shortcutLabel={newThreadShortcutLabel}
+                onStart={(provider) => {
+                  void startBareCliThread({ projectId: project.id, provider });
                 }}
               />
             </SidebarSectionToolbar>
@@ -5258,16 +5257,16 @@ export default function Sidebar() {
     () => [
       {
         id: "new-chat",
-        label: "New chat",
-        description: "Open the new chat landing screen.",
-        keywords: ["chat", "new", "home"],
+        label: "New CLI thread",
+        description: "Open a bare terminal and launch your favorite coding CLI.",
+        keywords: ["chat", "new", "home", "cli", "terminal"],
         shortcutLabel: newChatShortcutLabel,
       },
       {
         id: "new-thread",
-        label: "New thread",
-        description: "Start a fresh thread in the current or most recently used project.",
-        keywords: ["thread", "new", "project"],
+        label: "New CLI thread in project",
+        description: "Start a bare CLI session in the current or most recently used project.",
+        keywords: ["thread", "new", "project", "cli", "terminal"],
         shortcutLabel: newThreadShortcutLabel,
       },
       {
@@ -5711,10 +5710,13 @@ export default function Sidebar() {
                     />
                   ) : isOnStudio ? (
                     <>
-                      <SidebarPrimaryAction
-                        icon={NewThreadIcon}
-                        label="New studio chat"
-                        onClick={handleCreateStudioChat}
+                      <SidebarPrimaryCliAction
+                        favoriteProvider={appSettings.defaultProvider}
+                        providerStatuses={providerStatuses}
+                        label="New thread"
+                        onStart={(provider) => {
+                          void handleCreateStudioChat(provider);
+                        }}
                       />
                       <SidebarPrimaryAction
                         icon={SearchIcon}
@@ -5728,13 +5730,6 @@ export default function Sidebar() {
                     </>
                   ) : (
                     <>
-                      <SidebarPrimaryAction
-                        icon={NewThreadIcon}
-                        label="New thread"
-                        onClick={handlePrimaryNewThread}
-                        onMouseEnter={prefetchModelsForPrimaryNewThread}
-                        onFocus={prefetchModelsForPrimaryNewThread}
-                      />
                       <SidebarPrimaryAction
                         icon={SearchIcon}
                         label="Search"
@@ -5900,13 +5895,6 @@ export default function Sidebar() {
                   {renderListSectionHeader(
                     "Studio",
                     <>
-                      <SidebarIconButton
-                        icon={NewThreadIcon}
-                        label="New studio chat"
-                        tooltip="New studio chat"
-                        tooltipSide="top"
-                        onClick={handleCreateStudioChat}
-                      />
                       <ChatSortMenu
                         threadSortOrder={appSettings.sidebarThreadSortOrder}
                         onThreadSortOrderChange={(sortOrder) => {
@@ -5922,7 +5910,7 @@ export default function Sidebar() {
                       )
                     ) : (
                       <div className="px-2 pt-4 text-center text-[length:var(--app-font-size-ui,12px)] text-muted-foreground/58">
-                        {threadsHydrated ? "No studio chats yet" : "Loading Studio..."}
+                        {threadsHydrated ? "No studio sessions yet" : "Loading Studio..."}
                       </div>
                     )}
                   </SidebarMenu>
@@ -6094,14 +6082,16 @@ export default function Sidebar() {
                   />
                   <SidebarIconButton
                     icon={NewThreadIcon}
-                    label="Open new chat home"
+                    label="Start favorite CLI"
                     onClick={(event) => {
                       event.preventDefault();
                       event.stopPropagation();
                       void handleCreateHomeChat();
                     }}
                     tooltip={
-                      newChatShortcutLabel ? `New chat (${newChatShortcutLabel})` : "New chat"
+                      newChatShortcutLabel
+                        ? `Favorite CLI (${newChatShortcutLabel})`
+                        : "Favorite CLI"
                     }
                     tooltipSide="top"
                   />
@@ -6602,8 +6592,7 @@ export default function Sidebar() {
           projects={searchPaletteProjects}
           projectById={projectById}
           onCreateChat={() =>
-            // Segment-aware, matching the sidebar's + action: "New chat" from the palette while
-            // on the Studio segment opens a Studio chat, not a home draft.
+            // Segment-aware: Studio opens a bare CLI at ~; Projects opens a home CLI thread.
             void (isOnStudio ? handleCreateStudioChat() : handleCreateHomeChat())
           }
           onCreateThread={handlePrimaryNewThread}

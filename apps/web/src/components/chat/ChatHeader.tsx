@@ -13,6 +13,11 @@ import {
   type ThreadId,
 } from "@synara/contracts";
 import { isGenericChatThreadTitle } from "@synara/shared/chatThreads";
+import {
+  defaultTerminalTitleForCliKind,
+  type TerminalCliKind,
+  type TerminalIconKey,
+} from "@synara/shared/terminalThreads";
 import React, { type Dispatch, type SetStateAction, useEffect, useRef, useState } from "react";
 import { FiGitBranch } from "react-icons/fi";
 import { HiMiniArrowsPointingOut } from "react-icons/hi2";
@@ -31,6 +36,7 @@ import {
   XIcon,
 } from "~/lib/icons";
 import { formatRelativeTime } from "~/lib/relativeTime";
+import { terminalIconKeyForCliKind } from "~/lib/bareCliLaunch";
 import {
   CHAT_HEADER_TOGGLE_CLASS_NAME,
   ChatHeaderButton,
@@ -62,6 +68,7 @@ import { useOpenFavoriteEditorShortcut } from "~/hooks/useOpenFavoriteEditorShor
 import type { RepoDiffTotals } from "~/hooks/useRepoDiffTotals";
 import { ProviderIcon } from "../ProviderIcon";
 import { ProviderUsageMenuControl } from "../ProviderUsageMenuControl";
+import TerminalIdentityIcon from "../terminal/TerminalIdentityIcon";
 import { EnvironmentToggle, type EnvironmentToggleState } from "./environment/EnvironmentToggle";
 
 /**
@@ -76,6 +83,8 @@ interface ChatHeaderProps {
   activeThreadTitle: string;
   activeThreadEntryPoint: ThreadPrimarySurface;
   activeProvider: ProviderKind;
+  /** Seeded CLI kind for terminal-first threads — preferred over activeProvider for the icon. */
+  terminalCliKind?: TerminalCliKind | null;
   activeProjectName: string | undefined;
   threadBreadcrumbs: ReadonlyArray<{
     threadId: ThreadId;
@@ -495,6 +504,7 @@ export function ChatHeader({
   activeThreadTitle,
   activeThreadEntryPoint,
   activeProvider,
+  terminalCliKind = null,
   activeProjectName,
   threadBreadcrumbs,
   className,
@@ -680,12 +690,26 @@ export function ChatHeader({
                     className="inline-flex size-3.5 shrink-0 items-center justify-center"
                     title={
                       threadIconKind === "terminal"
-                        ? "Terminal"
+                        ? terminalCliKind
+                          ? defaultTerminalTitleForCliKind(terminalCliKind)
+                          : "Terminal"
                         : PROVIDER_DISPLAY_NAMES[activeProvider]
                     }
                   >
                     {threadIconKind === "terminal" ? (
-                      <TerminalIcon className="size-3.5 text-[var(--color-text-accent)]" />
+                      terminalCliKind ? (
+                        <TerminalIdentityIcon
+                          iconKey={terminalIconKeyForCliKind(terminalCliKind) as TerminalIconKey}
+                          className="size-3.5 text-[var(--color-text-accent)]"
+                        />
+                      ) : activeProvider ? (
+                        renderProviderIcon(
+                          activeProvider,
+                          "size-3.5 text-[var(--color-text-accent)]",
+                        )
+                      ) : (
+                        <TerminalIcon className="size-3.5 text-[var(--color-text-accent)]" />
+                      )
                     ) : (
                       renderProviderIcon(activeProvider, "size-3.5")
                     )}

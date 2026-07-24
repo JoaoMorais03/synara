@@ -1,108 +1,65 @@
 // FILE: _chat.studio.index.tsx
-// Purpose: Landing for the Studio surface — restore the latest Studio chat or its draft, falling
-//          back to creating a fresh Studio chat. Reuses the shared restore/create route surface so
-//          Studio gets the same empty-bootstrap-snapshot recovery machinery as the home route
-//          (a hard refresh or deep link can otherwise land on a briefly-empty snapshot and create
-//          a duplicate Studio thread).
+// Purpose: Studio landing — restore an existing bare-CLI Studio session when one exists;
+//          otherwise show a quiet empty state (do not auto-spawn a CLI or revive agent drafts).
 // Layer: Routing
-// Depends on: Studio project lookup, the shared restore/create route surface, and the Studio
-//             new-chat hook.
 
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { ProjectId, ThreadId } from "@synara/contracts";
 import { useEffect, useState } from "react";
 
 import { useAppSettings } from "../appSettings";
-import {
-  RestoreOrCreateChatRoute,
-  type RestoreRouteResolver,
-} from "../components/RestoreOrCreateChatRoute";
 import { sortThreadsForSidebar } from "../components/Sidebar.logic";
 import { readSidebarUiState } from "../components/Sidebar.uiState";
 import { resolveRestorableThreadRoute } from "../chatRouteRestore";
 import { SplashScreen } from "../components/SplashScreen";
+import { SynaraLogo } from "../components/SynaraLogo";
 import { useComposerDraftStore } from "../composerDraftStore";
-import { useHandleNewStudioChat } from "../hooks/useHandleNewStudioChat";
-import { collectStudioProjectIds, findStudioDraftThreadId } from "../lib/studioProjects";
+import { collectStudioProjectIds } from "../lib/studioProjects";
 import { EMPTY_THREAD_IDS, useStore } from "../store";
+import { useSplitViewStore } from "../splitViewStore";
+import {
+  selectThreadTerminalState,
+  useTerminalStateStore,
+} from "../terminalStateStore";
 import { useWorkspaceStore } from "../workspaceStore";
 
-// How long the splash below waits for the welcome's Studio root before surfacing an error —
-// generous next to a normal welcome round-trip, mirroring the home route's eventual error+retry.
 const WORKSPACE_PATHS_TIMEOUT_MS = 10_000;
+
+function StudioEmptyState() {
+  return (
+    <div className="flex min-h-0 min-w-0 flex-1 items-center justify-center bg-background">
+      <div className="flex max-w-sm flex-col items-center gap-4 px-6 text-center select-none">
+        <SynaraLogo aria-label="Synara" className="size-16 text-foreground/80" />
+        <div className="flex flex-col gap-1.5">
+          <h2 className="text-[18px] font-medium tracking-[-0.01em] text-foreground/90">
+            Studio
+          </h2>
+          <p className="text-[13px] leading-5 text-muted-foreground/70">
+            No sessions yet. Start a CLI from New thread in the sidebar.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function StudioIndexRouteView() {
   const { settings: appSettings } = useAppSettings();
-  const { handleNewStudioChat } = useHandleNewStudioChat();
+  const navigate = useNavigate();
+  const threadsHydrated = useStore((store) => store.threadsHydrated);
   const threadIds = useStore((state) => state.threadIds ?? EMPTY_THREAD_IDS);
   const projects = useStore((state) => state.projects);
   const sidebarThreadSummaryById = useStore((state) => state.sidebarThreadSummaryById);
-  const draftThreadsByThreadId = useComposerDraftStore((state) => state.draftThreadsByThreadId);
-  const projectDraftThreadIdByProjectId = useComposerDraftStore(
-    (state) => state.projectDraftThreadIdByProjectId,
+  const clearProjectDraftThreadId = useComposerDraftStore(
+    (state) => state.clearProjectDraftThreadId,
   );
+  const terminalStateByThreadId = useTerminalStateStore((state) => state.terminalStateByThreadId);
   const homeDir = useWorkspaceStore((state) => state.homeDir);
   const chatWorkspaceRoot = useWorkspaceStore((state) => state.chatWorkspaceRoot);
   const studioWorkspaceRoot = useWorkspaceStore((state) => state.studioWorkspaceRoot);
+  const splitViewsHydrated = useSplitViewStore((state) => state.hasHydrated);
+  const splitViewsById = useSplitViewStore((state) => state.splitViewsById);
 
-  const studioProjectIds = collectStudioProjectIds(projects, {
-    homeDir,
-    chatWorkspaceRoot,
-    studioWorkspaceRoot,
-  });
-  // The container's stored draft (if any). It's a valid remembered-route target below, and when
-  // nothing is remembered it wins over the latest thread: the resolver defers to
-  // `createFreshChat`, whose `handleNewStudioChat` reopens the stored draft.
-  const studioDraftThreadId = findStudioDraftThreadId({
-    studioProjectIds,
-    projectDraftThreadIdByProjectId,
-    draftThreadsByThreadId,
-  });
-  // Studio threads (sidebar summaries) backing both the remembered-route scope and the
-  // latest-thread fallback below. Archived chats are excluded — the sidebar hides them, so the
-  // landing must not resurrect one; an archived-only Studio opens the draft or a fresh chat.
-  const studioThreadSummaries = threadIds.flatMap((threadId) => {
-    const summary = sidebarThreadSummaryById[threadId];
-    return summary &&
-      (summary.archivedAt ?? null) === null &&
-      studioProjectIds.has(summary.projectId)
-      ? [summary]
-      : [];
-  });
-  // The most recent Studio chat (if any), used to restore the surface instead of always opening
-  // a brand-new draft.
-  const latestStudioThreadId =
-    sortThreadsForSidebar(studioThreadSummaries, appSettings.sidebarThreadSortOrder)[0]?.id ?? null;
-
-  // Same landing policy as the Studio segment switch and settings back: remembered route first
-  // (scoped to Studio threads plus the stored draft), then the stored draft, then the latest
-  // Studio chat — so a refresh or deep link on /studio returns to the chat you last had open.
-  const resolveRestoreRoute: RestoreRouteResolver = ({ availableSplitViewIds }) => {
-    const availableThreadIds = new Set<string>(studioThreadSummaries.map((thread) => thread.id));
-    if (studioDraftThreadId) {
-      availableThreadIds.add(studioDraftThreadId);
-    }
-    const rememberedRoute = resolveRestorableThreadRoute({
-      lastThreadRoute: readSidebarUiState().lastThreadRoute,
-      availableThreadIds,
-      availableSplitViewIds,
-    });
-    if (rememberedRoute) {
-      return rememberedRoute;
-    }
-    if (studioDraftThreadId || !latestStudioThreadId) {
-      return null;
-    }
-    return { threadId: latestStudioThreadId };
-  };
-
-  // Deliberately NOT `{ fresh: true }` (unlike the "/" route): when the resolver returns null
-  // because a Studio draft exists, handleNewStudioChat reopens that stored draft instead of
-  // minting a new one per visit — a fresh draft each landing would litter the hidden container.
-  const createFreshChat = () => handleNewStudioChat();
-
-  // A hidden Studio tab must never start the restore/create flow: a direct /studio link would
-  // otherwise race the sidebar's hidden-section redirect and could mint a hidden Studio draft.
-  const navigate = useNavigate();
   const studioSectionVisible = appSettings.showStudioSection;
   useEffect(() => {
     if (!studioSectionVisible) {
@@ -110,9 +67,6 @@ function StudioIndexRouteView() {
     }
   }, [navigate, studioSectionVisible]);
 
-  // Don't wait on the splash below forever: if the welcome never delivers a Studio root
-  // (connection trouble, or a server that doesn't report one), surface an error with a retry
-  // that re-arms the wait — matching how the home route eventually surfaces failures.
   const [pathsWaitTimedOut, setPathsWaitTimedOut] = useState(false);
   useEffect(() => {
     if (studioWorkspaceRoot || pathsWaitTimedOut) {
@@ -122,14 +76,84 @@ function StudioIndexRouteView() {
     return () => window.clearTimeout(timer);
   }, [pathsWaitTimedOut, studioWorkspaceRoot]);
 
+  const studioProjectIds = collectStudioProjectIds(projects, {
+    homeDir,
+    chatWorkspaceRoot,
+    studioWorkspaceRoot,
+  });
+  const studioProjectIdsKey = [...studioProjectIds].sort().join(",");
+  // Studio is bare-CLI only — ignore agent-chat drafts/threads so empty Studio stays empty.
+  const studioCliThreadSummaries = threadIds.flatMap((threadId) => {
+    const summary = sidebarThreadSummaryById[threadId];
+    if (
+      !summary ||
+      (summary.archivedAt ?? null) !== null ||
+      !studioProjectIds.has(summary.projectId)
+    ) {
+      return [];
+    }
+    const entryPoint = selectThreadTerminalState(terminalStateByThreadId, threadId).entryPoint;
+    return entryPoint === "terminal" ? [summary] : [];
+  });
+  const studioThreadIdsKey = studioCliThreadSummaries.map((row) => row.id).join(",");
+  const latestStudioThreadId =
+    sortThreadsForSidebar(studioCliThreadSummaries, appSettings.sidebarThreadSortOrder)[0]?.id ??
+    null;
+
+  // Drop stale Studio agent-chat drafts so they can't revive composer landings.
+  useEffect(() => {
+    if (!threadsHydrated || studioProjectIdsKey.length === 0) {
+      return;
+    }
+    for (const projectId of studioProjectIdsKey.split(",")) {
+      clearProjectDraftThreadId(ProjectId.makeUnsafe(projectId), "chat");
+    }
+  }, [clearProjectDraftThreadId, studioProjectIdsKey, threadsHydrated]);
+
+  useEffect(() => {
+    if (!studioSectionVisible || !threadsHydrated || !splitViewsHydrated || !studioWorkspaceRoot) {
+      return;
+    }
+
+    const availableThreadIds = new Set(
+      studioThreadIdsKey.length > 0 ? studioThreadIdsKey.split(",") : [],
+    );
+    const rememberedRoute = resolveRestorableThreadRoute({
+      lastThreadRoute: readSidebarUiState().lastThreadRoute,
+      availableThreadIds,
+      availableSplitViewIds: new Set(
+        Object.keys(splitViewsById).filter((splitViewId) => splitViewsById[splitViewId]),
+      ),
+    });
+    const restoreThreadId = rememberedRoute?.threadId ?? latestStudioThreadId ?? null;
+
+    if (!restoreThreadId) {
+      return;
+    }
+
+    void navigate({
+      to: "/$threadId",
+      params: { threadId: ThreadId.makeUnsafe(restoreThreadId) },
+      replace: true,
+      search: () => ({
+        splitViewId: rememberedRoute?.splitViewId,
+      }),
+    });
+  }, [
+    latestStudioThreadId,
+    navigate,
+    splitViewsById,
+    splitViewsHydrated,
+    studioSectionVisible,
+    studioThreadIdsKey,
+    studioWorkspaceRoot,
+    threadsHydrated,
+  ]);
+
   if (!studioSectionVisible) {
     return <SplashScreen />;
   }
 
-  // The resolver and `handleNewStudioChat` both read the server welcome's workspace paths.
-  // The shared restore/create machinery only guards against an empty *thread* snapshot, so hold
-  // the splash until the welcome arrives — otherwise a snapshot that hydrates first would make
-  // the resolver miss existing Studio threads and the fallback create fail against a null root.
   if (!studioWorkspaceRoot) {
     return (
       <SplashScreen
@@ -143,12 +167,16 @@ function StudioIndexRouteView() {
     );
   }
 
-  return (
-    <RestoreOrCreateChatRoute
-      resolveRestoreRoute={resolveRestoreRoute}
-      createFreshChat={createFreshChat}
-    />
-  );
+  if (!threadsHydrated || !splitViewsHydrated) {
+    return <SplashScreen />;
+  }
+
+  if (studioCliThreadSummaries.length === 0) {
+    return <StudioEmptyState />;
+  }
+
+  // Restoring an existing session — keep splash until navigation commits.
+  return <SplashScreen />;
 }
 
 export const Route = createFileRoute("/_chat/studio/")({

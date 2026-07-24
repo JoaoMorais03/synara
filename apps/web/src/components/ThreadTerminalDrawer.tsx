@@ -491,6 +491,8 @@ interface ThreadTerminalDrawerProps {
   onTogglePresentationMode?: (() => void) | undefined;
   onTogglePanel?: (() => void) | undefined;
   isPanelOpen?: boolean | undefined;
+  /** Studio bare-CLI: one PTY, no tab/split chrome. */
+  bareCliSurface?: boolean;
 }
 
 export default function ThreadTerminalDrawer({
@@ -531,6 +533,7 @@ export default function ThreadTerminalDrawer({
   onTogglePresentationMode,
   onTogglePanel,
   isPanelOpen,
+  bareCliSurface = false,
 }: ThreadTerminalDrawerProps) {
   const isWorkspaceMode = presentationMode === "workspace";
   const previousRuntimeKeysRef = useRef<Set<string>>(new Set());
@@ -645,8 +648,8 @@ export default function ThreadTerminalDrawer({
       children: <Trash2 className="size-3.25" />,
     },
   ];
-  const showTerminalGroupTabs = resolvedTerminalGroups.length > 1;
-  const topTabBarActions = terminalChromeActions;
+  const showTerminalGroupTabs = !bareCliSurface && resolvedTerminalGroups.length > 1;
+  const topTabBarActions = bareCliSurface ? [] : terminalChromeActions;
 
   return (
     <aside
@@ -696,8 +699,9 @@ export default function ThreadTerminalDrawer({
               terminalVisualIdentityById={terminalVisualIdentityById}
               onActiveTerminalChange={onActiveTerminalChange}
               onResizeSplit={onResizeTerminalSplit}
+              chromeMode={bareCliSurface ? "bare" : "full"}
               onSplitTerminalRight={
-                hasReachedSplitLimit
+                bareCliSurface || hasReachedSplitLimit
                   ? undefined
                   : (terminalId) => {
                       onActiveTerminalChange(terminalId);
@@ -705,7 +709,7 @@ export default function ThreadTerminalDrawer({
                     }
               }
               onSplitTerminalDown={
-                hasReachedSplitLimit
+                bareCliSurface || hasReachedSplitLimit
                   ? undefined
                   : (terminalId) => {
                       onActiveTerminalChange(terminalId);
@@ -713,17 +717,19 @@ export default function ThreadTerminalDrawer({
                     }
               }
               onNewTerminalTab={
-                hasReachedSplitLimit
+                bareCliSurface || hasReachedSplitLimit
                   ? undefined
                   : (terminalId) => {
                       onNewTerminalTab(terminalId);
                     }
               }
-              onMoveTerminalToGroup={isWorkspaceMode ? onMoveTerminalToGroup : undefined}
-              onCloseTerminal={onCloseTerminal}
+              onMoveTerminalToGroup={
+                bareCliSurface || !isWorkspaceMode ? undefined : onMoveTerminalToGroup
+              }
+              onCloseTerminal={bareCliSurface ? undefined : onCloseTerminal}
               presentationMode={presentationMode}
-              onTogglePresentationMode={onTogglePresentationMode}
-              onTogglePanel={onTogglePanel}
+              onTogglePresentationMode={bareCliSurface ? undefined : onTogglePresentationMode}
+              onTogglePanel={bareCliSurface ? undefined : onTogglePanel}
               isPanelOpen={isPanelOpen}
               renderViewport={(terminalId, options) => (
                 <TerminalViewport
