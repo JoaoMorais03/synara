@@ -19,9 +19,6 @@ const CONTROL_METHODS = new Set<string>([
   WS_METHODS.terminalResize,
   WS_METHODS.terminalClose,
   WS_METHODS.serverStopLocalServer,
-  WS_METHODS.automationCancelRun,
-  WS_METHODS.automationMarkRunRead,
-  WS_METHODS.automationArchiveRun,
 ]);
 
 const EXPENSIVE_READ_METHODS = new Set<string>([
@@ -44,7 +41,6 @@ const EXPENSIVE_READ_METHODS = new Set<string>([
   WS_METHODS.serverListProviderUsage,
   WS_METHODS.serverGetDiagnostics,
   WS_METHODS.serverGenerateThreadRecap,
-  WS_METHODS.serverGenerateAutomationIntent,
   WS_METHODS.serverTranscribeVoice,
   WS_METHODS.statsGetProfileStats,
   WS_METHODS.statsGetProfileTokenStats,

@@ -40,14 +40,13 @@ export interface ToolCallGroupSummary {
   iconEntry: WorkLogEntry;
 }
 
-// Rich rows (subagent strips, automation cards, thread-creation recaps) and
-// non-tool tones (errors, approvals, info) must stay individually visible, so
-// they never fold into a summary group.
+// Rich rows (subagent strips, thread-creation recaps) and non-tool tones
+// (errors, approvals, info) must stay individually visible, so they never fold
+// into a summary group.
 export function isSummarizableToolCallEntry(entry: WorkLogEntry): boolean {
   return (
     entry.tone === "tool" &&
     !entry.synaraThreadCreation &&
-    !entry.automation &&
     !entry.subagentAction &&
     (entry.subagents?.length ?? 0) === 0
   );

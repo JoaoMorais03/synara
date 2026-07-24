@@ -9,11 +9,9 @@
 import { ServiceMap } from "effect";
 import type { Effect } from "effect";
 import type {
-  AutomationMode,
   ChatAttachment,
   ModelSelection,
   ProviderStartOptions,
-  ServerGenerateAutomationIntentResult,
 } from "@synara/contracts";
 
 import type { TextGenerationError } from "../Errors.ts";
@@ -128,54 +126,13 @@ export interface ThreadRecapGenerationResult {
   recap: string;
 }
 
-export interface AutomationIntentGenerationInput {
-  cwd: string;
-  message: string;
-  defaultMode?: AutomationMode;
-  nowIso: string;
-  codexHomePath?: string;
-  /** Model to use for generation. Defaults to gpt-5.4-mini if not specified. */
-  model?: string;
-  /** Optional provider-aware selection for providers that need more than a raw model slug. */
-  modelSelection?: ModelSelection;
-  /** Optional provider startup overrides, such as custom binary paths or server URLs. */
-  providerOptions?: ProviderStartOptions;
-}
-
-export type AutomationIntentGenerationResult = ServerGenerateAutomationIntentResult;
-
-export interface AutomationCompletionEvaluationInput {
-  cwd: string;
-  automationName: string;
-  automationPrompt: string;
-  stopWhen: string;
-  runUserMessage: string;
-  runAssistantText: string;
-  threadContext?: string | undefined;
-  codexHomePath?: string;
-  /** Model to use for generation. Defaults to gpt-5.4-mini if not specified. */
-  model?: string;
-  /** Optional provider-aware selection for providers that need more than a raw model slug. */
-  modelSelection?: ModelSelection;
-  /** Optional provider startup overrides, such as custom binary paths or server URLs. */
-  providerOptions?: ProviderStartOptions;
-}
-
-export interface AutomationCompletionEvaluationResult {
-  stopMatched: boolean;
-  confidence: number;
-  reason: string;
-}
-
 export type TextGenerationOperation =
   | "generateCommitMessage"
   | "generatePrContent"
   | "generateDiffSummary"
   | "generateBranchName"
   | "generateThreadTitle"
-  | "generateThreadRecap"
-  | "generateAutomationIntent"
-  | "evaluateAutomationCompletion";
+  | "generateThreadRecap";
 
 /**
  * TextGenerationShape - Service API for AI-generated Git and thread text.
@@ -222,20 +179,6 @@ export interface TextGenerationShape {
   readonly generateThreadRecap: (
     input: ThreadRecapGenerationInput,
   ) => Effect.Effect<ThreadRecapGenerationResult, TextGenerationError>;
-
-  /**
-   * Convert a composer automation invocation into a structured creation intent.
-   */
-  readonly generateAutomationIntent: (
-    input: AutomationIntentGenerationInput,
-  ) => Effect.Effect<AutomationIntentGenerationResult, TextGenerationError>;
-
-  /**
-   * Decide whether a completed heartbeat run satisfies its saved stop clause.
-   */
-  readonly evaluateAutomationCompletion: (
-    input: AutomationCompletionEvaluationInput,
-  ) => Effect.Effect<AutomationCompletionEvaluationResult, TextGenerationError>;
 }
 
 /**

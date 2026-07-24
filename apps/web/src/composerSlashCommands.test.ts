@@ -22,7 +22,6 @@ describe("composerSlashCommands", () => {
   it("recognizes built-in slash commands", () => {
     expect(isBuiltInComposerSlashCommand("review")).toBe(true);
     expect(isBuiltInComposerSlashCommand("fast")).toBe(true);
-    expect(isBuiltInComposerSlashCommand("automation")).toBe(true);
     expect(isBuiltInComposerSlashCommand("export")).toBe(true);
     expect(isBuiltInComposerSlashCommand("feedback")).toBe(true);
     expect(isBuiltInComposerSlashCommand("unknown")).toBe(false);
@@ -31,9 +30,7 @@ describe("composerSlashCommands", () => {
   it("filters slash commands by query", () => {
     expect(filterComposerSlashCommands("rev").map((entry) => entry.command)).toEqual(["review"]);
     expect(filterComposerSlashCommands("fast").map((entry) => entry.command)).toEqual(["fast"]);
-    expect(filterComposerSlashCommands("auto").map((entry) => entry.command)).toEqual([
-      "automation",
-    ]);
+    expect(filterComposerSlashCommands("auto").map((entry) => entry.command)).toEqual([]);
     expect(filterComposerSlashCommands("feed").map((entry) => entry.command)).toEqual(["feedback"]);
   });
 
@@ -57,10 +54,6 @@ describe("composerSlashCommands", () => {
     expect(parseComposerSlashInvocation("/side is this safe?")).toEqual({
       command: "side",
       args: "is this safe?",
-    });
-    expect(parseComposerSlashInvocation("/automation every 6h check the page")).toEqual({
-      command: "automation",
-      args: "every 6h check the page",
     });
     expect(parseComposerSlashInvocation("/feedback")).toEqual({
       command: "feedback",
@@ -284,7 +277,7 @@ describe("composerSlashCommands", () => {
         canOfferSideCommand: true,
         canOfferExportCommand: true,
       }),
-    ).toEqual(["side", "export", "feedback", "automation"]);
+    ).toEqual(["side", "export", "feedback"]);
   });
 
   it("offers the app-level /export command on every provider", () => {

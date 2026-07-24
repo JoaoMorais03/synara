@@ -20,7 +20,7 @@ This document covers build-only native validation and publishing desktop release
 - Publishes default `latest*.yml` metadata plus byte-identical `synara*.yml` aliases on every stable release so existing packaged binaries keep working.
 - Keeps the historical 0.4.x compatibility release unchanged; current stable payloads stay on their own GitHub Latest release.
 - Publishes prerelease installers only on their versioned GitHub prerelease; prereleases never replace the stable `synara` update manifests.
-- Publishes the CLI package (`apps/server`, npm package `@synara/cli`) with OIDC trusted publishing.
+- Publishes the backend package (`apps/server`, npm package `@synara/backend`) with OIDC trusted publishing.
 - Signing is optional and auto-detected per platform from secrets.
 
 ## Desktop auto-update notes
@@ -64,7 +64,7 @@ the package version to the release tag version.
 
 Checklist:
 
-1. Confirm the npm account controls the `@synara` scope and can publish `@synara/cli`.
+1. Confirm the npm account controls the `@synara` scope and can publish `@synara/backend`.
 2. In npm package settings, configure Trusted Publisher:
    - Provider: GitHub Actions
    - Repository: this repo

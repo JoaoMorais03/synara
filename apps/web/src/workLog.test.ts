@@ -156,7 +156,7 @@ describe("deriveWorkLogEntries", () => {
     expect(unfiltered.map((entry) => entry.id)).toEqual(["turn-1", "turn-2"]);
   });
 
-  it("keeps created-automation milestones and exposes their card fields despite a null turn id", () => {
+  it("keeps created-automation milestones as generic work log entries despite a null turn id", () => {
     const activities: OrchestrationThreadActivity[] = [
       makeActivity({
         id: "turn-1",
@@ -185,37 +185,8 @@ describe("deriveWorkLogEntries", () => {
 
     const automationEntry = entries.find((entry) => entry.id === "automation-created");
     expect(automationEntry).toBeDefined();
-    expect(automationEntry?.automation).toEqual({
-      id: "automation-7",
-      name: "Watch Synara PR 231",
-      cadenceLabel: "Every 5m",
-    });
-  });
-
-  it("carries pending proposal state into automation transcript cards", () => {
-    const activities: OrchestrationThreadActivity[] = [
-      makeActivity({
-        id: "automation-proposal",
-        createdAt: "2026-02-23T00:00:05.000Z",
-        kind: "automation.created",
-        summary: "Suggested automation: Watch CI",
-        tone: "info",
-        payload: {
-          source: "agent-gateway",
-          automationId: "automation-proposal-1",
-          automationName: "Watch CI",
-          cadenceLabel: "Every 5m",
-          proposalState: "pending",
-        },
-      }),
-    ];
-
-    expect(deriveWorkLogEntries(activities, undefined)[0]?.automation).toEqual({
-      id: "automation-proposal-1",
-      name: "Watch CI",
-      cadenceLabel: "Every 5m",
-      proposalState: "pending",
-    });
+    expect(automationEntry?.label).toBe("Created automation: Watch Synara PR 231 - Every 5m");
+    expect(automationEntry).not.toHaveProperty("automation");
   });
 
   it("exposes a provider-independent Synara thread creation recap", () => {

@@ -163,4 +163,4 @@ export type AuthPairingLinkRepositoryError = PersistenceSqlError | PersistenceDe
 
 export type AuthSessionRepositoryError = PersistenceSqlError | PersistenceDecodeError;
 
-export type AutomationRepositoryError = PersistenceSqlError | PersistenceDecodeError;
+

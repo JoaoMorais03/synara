@@ -32,7 +32,6 @@ export {
   isProviderFileEditWorkLogEntry,
   orderedActivities,
   type TimelineEntry,
-  type WorkLogAutomation,
   type WorkLogEntry,
   type WorkLogSubagent,
   type WorkLogSubagentAction,

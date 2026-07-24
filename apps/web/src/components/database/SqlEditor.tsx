@@ -74,7 +74,7 @@ export const SqlEditor = forwardRef<
       suggestSqlCompletions({
         sql: props.value,
         caret,
-        extraWords: props.extraWords,
+        ...(props.extraWords ? { extraWords: props.extraWords } : {}),
       }),
     [props.value, caret, props.extraWords],
   );

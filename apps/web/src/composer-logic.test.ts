@@ -307,12 +307,6 @@ describe("expandCollapsedComposerCursor", () => {
     expect(detectComposerTrigger(text, expandedCursor)).toBeNull();
   });
 
-  it("maps collapsed /automation command chip cursor to expanded text cursor", () => {
-    const text = "/automation fra 15 secondi scrivi qui";
-
-    expect(expandCollapsedComposerCursor(text, 1)).toBe("/automation".length);
-    expect(expandCollapsedComposerCursor(text, 2)).toBe("/automation ".length);
-  });
 
   it("counts quoted mention tokens at their raw length", () => {
     const text = `@"Casual greeting" what's this?`;
@@ -364,12 +358,6 @@ describe("collapseExpandedComposerCursor", () => {
     ).toBe(text.length);
   });
 
-  it("maps expanded /automation command text cursor back to the chip cursor", () => {
-    const text = "/automation fra 15 secondi scrivi qui";
-
-    expect(collapseExpandedComposerCursor(text, "/automation".length)).toBe(1);
-    expect(collapseExpandedComposerCursor(text, "/automation ".length)).toBe(2);
-  });
 });
 
 describe("clampCollapsedComposerCursor", () => {
@@ -455,12 +443,6 @@ describe("isCollapsedCursorAdjacentToInlineToken", () => {
     expect(isCollapsedCursorAdjacentToInlineToken(text, tokenStart, "right")).toBe(true);
   });
 
-  it("treats /automation as an inline token once it has trailing text", () => {
-    const text = "/automation fra 15 secondi";
-
-    expect(isCollapsedCursorAdjacentToInlineToken(text, 1, "left")).toBe(true);
-    expect(isCollapsedCursorAdjacentToInlineToken(text, 0, "right")).toBe(true);
-  });
 });
 
 describe("parseStandaloneComposerSlashCommand", () => {

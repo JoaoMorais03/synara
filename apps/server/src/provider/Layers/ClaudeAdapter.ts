@@ -873,15 +873,8 @@ const CLAUDE_SETTING_SOURCES = [
   "local",
 ] as const satisfies ReadonlyArray<SettingSource>;
 const CLAUDE_CONTEXT_USAGE_TIMEOUT_MS = 1_000;
-export const buildEmbeddedClaudeSystemPromptAppend = () =>
-  [
-    "You are running inside Synara, a coding app that embeds the Claude Agent SDK.",
-    "Do not present the host app as Claude Code unless the user is explicitly asking about Claude Code.",
-    "Treat the current working directory as the active workspace for the task.",
-    "When the user asks about the current project, codebase, or repository, proactively inspect files in the current working directory before asking the user where to look.",
-    "When spawning subagents, set the Agent tool's `model` parameter and pick reasoning effort by choosing a worker-<tier> subagent type (worker-low, worker-medium, worker-high, worker-xhigh).",
-    "Honor explicit user instructions about a subagent's model or effort verbatim; otherwise match task complexity: mechanical work → haiku or worker-low, standard work → sonnet or worker-medium, hard reasoning → opus or fable with worker-high and above.",
-  ].join("\n");
+/** Prefer bare Claude Code behavior — no Synara host “personality” injection. */
+export const buildEmbeddedClaudeSystemPromptAppend = () => "";
 
 const CLAUDE_WORKER_EFFORT_TIERS = ["low", "medium", "high", "xhigh"] as const;
 const CLAUDE_WORKER_PROMPT =

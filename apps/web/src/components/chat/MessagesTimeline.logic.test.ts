@@ -321,13 +321,8 @@ describe("computeStableMessagesTimelineRows", () => {
           {
             id: "automation-created",
             createdAt: "2026-05-09T10:00:00.000Z",
-            label: "Created automation",
+            label: "Created automation: Watch Synara PR 231 - Every 5m",
             tone: "info",
-            automation: {
-              id: "automation-7",
-              name: "Watch Synara PR 231",
-              cadenceLabel: "Every 5m",
-            },
           },
         ],
       },

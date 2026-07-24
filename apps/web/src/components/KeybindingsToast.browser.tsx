@@ -155,9 +155,6 @@ function resolveWsRpc(tag: string): unknown {
   if (tag === WS_METHODS.projectsListDevServers) {
     return { servers: [] };
   }
-  if (tag === WS_METHODS.automationList) {
-    return { definitions: [], runs: [] };
-  }
   if (tag === WS_METHODS.gitListBranches) {
     return {
       isRepo: true,
@@ -234,8 +231,7 @@ const worker = setupWorker(
         method === WS_METHODS.subscribeServerSettings ||
         method === WS_METHODS.subscribeTerminalEvents ||
         method === WS_METHODS.subscribeOrchestrationDomainEvents ||
-        method === WS_METHODS.subscribeProjectDevServerEvents ||
-        method === WS_METHODS.subscribeAutomationEvents
+        method === WS_METHODS.subscribeProjectDevServerEvents
       ) {
         return;
       }

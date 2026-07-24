@@ -56,24 +56,6 @@ describe("matchComposerLinkToken", () => {
 });
 
 describe("matchComposerSlashCommandChipToken", () => {
-  it("matches /automation only after a delimiter while typing", () => {
-    expect(matchComposerSlashCommandChipToken("/automation")).toBeNull();
-    expect(matchComposerSlashCommandChipToken("/automation ")).toEqual({
-      command: "automation",
-      start: 0,
-      end: "/automation".length,
-    });
-    expect(matchComposerSlashCommandChipToken("/Automation ")).toEqual({
-      command: "automation",
-      start: 0,
-      end: "/automation".length,
-    });
-    expect(matchComposerSlashCommandChipToken("please /automation now")).toEqual({
-      command: "automation",
-      start: "please ".length,
-      end: "please /automation".length,
-    });
-  });
 
   it("does not match other built-in slash commands as composer chips", () => {
     expect(matchComposerSlashCommandChipToken("/plan ")).toBeNull();
@@ -165,12 +147,6 @@ describe("splitPromptIntoComposerSegments", () => {
     ]);
   });
 
-  it("converts completed /automation into an app slash-command segment", () => {
-    expect(splitPromptIntoComposerSegments("/automation fra 15 secondi scrivi qui")).toEqual([
-      { type: "slash-command", command: "automation" },
-      { type: "text", text: " fra 15 secondi scrivi qui" },
-    ]);
-  });
 
   it("keeps a typed agent alias as plain text until parentheses are added", () => {
     expect(splitPromptIntoComposerSegments("Ask @spark")).toEqual([

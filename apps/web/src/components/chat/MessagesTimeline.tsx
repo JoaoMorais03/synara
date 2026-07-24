@@ -365,7 +365,6 @@ interface MessagesTimelineProps {
   onOpenTurnDiff: (turnId: TurnId, filePath?: string) => void;
   onOpenThread?: (threadId: ThreadId) => void;
   /** Open an automation's detail page from a "created automation" transcript card. */
-  onOpenAutomation?: (automationId: string) => void;
   /** Recent child-thread tool calls rendered under subagent rows, keyed by child thread id. */
   subagentToolTraceByThreadId?: ReadonlyMap<string, SubagentToolTrace>;
   revertTurnCountByUserMessageId: Map<MessageId, number>;
@@ -424,7 +423,6 @@ export const MessagesTimeline = memo(function MessagesTimeline({
   onOpenAgentActivity,
   onOpenTurnDiff,
   onOpenThread,
-  onOpenAutomation,
   subagentToolTraceByThreadId,
   revertTurnCountByUserMessageId,
   onRevertUserMessage,
@@ -963,7 +961,6 @@ export const MessagesTimeline = memo(function MessagesTimeline({
               onImageExpand={onImageExpand}
               {...(onOpenAgentActivity ? { onOpenAgentActivity } : {})}
               {...(onOpenThread ? { onOpenThread } : {})}
-              {...(onOpenAutomation ? { onOpenAutomation } : {})}
               {...(subagentToolTraceByThreadId ? { subagentToolTraceByThreadId } : {})}
             />
           );
@@ -1417,7 +1414,6 @@ export const MessagesTimeline = memo(function MessagesTimeline({
                 onOpenTurnDiff={onOpenTurnDiff}
                 {...(onOpenAgentActivity ? { onOpenAgentActivity } : {})}
                 {...(onOpenThread ? { onOpenThread } : {})}
-                {...(onOpenAutomation ? { onOpenAutomation } : {})}
                 {...(subagentToolTraceByThreadId ? { subagentToolTraceByThreadId } : {})}
                 {...(turnSummary?.turnId ? { turnId: turnSummary.turnId } : {})}
               />
@@ -1529,7 +1525,6 @@ export const MessagesTimeline = memo(function MessagesTimeline({
                         onImageExpand={onImageExpand}
                         {...(onOpenAgentActivity ? { onOpenAgentActivity } : {})}
                         {...(onOpenThread ? { onOpenThread } : {})}
-                        {...(onOpenAutomation ? { onOpenAutomation } : {})}
                         {...(subagentToolTraceByThreadId ? { subagentToolTraceByThreadId } : {})}
                       />
                     ))}
@@ -1550,7 +1545,6 @@ export const MessagesTimeline = memo(function MessagesTimeline({
                 onImageExpand={onImageExpand}
                 {...(onOpenAgentActivity ? { onOpenAgentActivity } : {})}
                 {...(onOpenThread ? { onOpenThread } : {})}
-                {...(onOpenAutomation ? { onOpenAutomation } : {})}
                 {...(subagentToolTraceByThreadId ? { subagentToolTraceByThreadId } : {})}
               />
             ) : (

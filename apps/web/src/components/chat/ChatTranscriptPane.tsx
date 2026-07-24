@@ -70,7 +70,6 @@ interface ChatTranscriptPaneProps {
   onOpenAgentActivity?: ComponentProps<typeof MessagesTimeline>["onOpenAgentActivity"];
   onOpenTurnDiff: (turnId: TurnId, filePath?: string) => void;
   onOpenThread: (threadId: ThreadId) => void;
-  onOpenAutomation?: ComponentProps<typeof MessagesTimeline>["onOpenAutomation"];
   onRevertUserMessage: (messageId: MessageId) => void;
   onUndoTurnFiles?: ComponentProps<typeof MessagesTimeline>["onUndoTurnFiles"];
   onEditUserMessage?: (messageId: MessageId, text: string) => boolean | Promise<boolean>;
@@ -130,7 +129,6 @@ export function ChatTranscriptPane({
   onOpenAgentActivity,
   onOpenTurnDiff,
   onOpenThread,
-  onOpenAutomation,
   onRevertUserMessage,
   onUndoTurnFiles,
   onEditUserMessage,
@@ -207,7 +205,6 @@ export function ChatTranscriptPane({
             turnDiffSummaryByAssistantMessageId={turnDiffSummaryByAssistantMessageId}
             onOpenTurnDiff={onOpenTurnDiff}
             onOpenThread={onOpenThread}
-            {...(onOpenAutomation ? { onOpenAutomation } : {})}
             {...(subagentToolTraceByThreadId ? { subagentToolTraceByThreadId } : {})}
             revertTurnCountByUserMessageId={revertTurnCountByUserMessageId}
             onRevertUserMessage={onRevertUserMessage}

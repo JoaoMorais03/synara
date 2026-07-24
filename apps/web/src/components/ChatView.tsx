@@ -1,6 +1,4 @@
 import {
-  type AutomationDefinition,
-  type AutomationSchedule,
   type ApprovalRequestId,
   DEFAULT_MODEL_BY_PROVIDER,
   EventId,
@@ -141,18 +139,6 @@ import {
 } from "../lib/composerSend";
 import { composerImageBlobKey, persistComposerImageBlob } from "../lib/composerImageBlobStore";
 import { reconcileDeletedThreadFromClient } from "../lib/deletedThreadClientReconciliation";
-import { extractChatAutomationInvocation } from "../lib/automationIntent";
-import {
-  automationClarificationPrompt,
-  buildComposerAutomationDraft,
-  resolveComposerAutomationRequest,
-} from "../lib/composerAutomation";
-import {
-  acknowledgedRiskIdsForDraft,
-  hasBlockingAutomationDraftWarnings,
-  type AutomationDraftWarning,
-  type AutomationDraftWarningId,
-} from "../lib/automationDraft";
 import { dispatchThreadRename } from "../lib/threadRename";
 import { useHandleNewChat } from "../hooks/useHandleNewChat";
 import { useComposerDropzone } from "../hooks/useComposerDropzone";
@@ -418,19 +404,6 @@ import { useNowMs } from "~/hooks/useNowMs";
 import { useThreadRecap } from "~/hooks/useThreadRecap";
 import { useRepoDiffTotals } from "~/hooks/useRepoDiffTotals";
 import { useIsMobile } from "~/hooks/useMediaQuery";
-import {
-  acknowledgedRiskIdsForFormWarnings,
-  AutomationDialog,
-  automationQueryKey,
-  createInputFromForm,
-  formatCadence,
-  heartbeatAutomationsForThread,
-  isFormSubmittable,
-  providerOptionsForAutomationEdit,
-  projectModelSelection as automationProjectModelSelection,
-  type AutomationFormState,
-  updateInputFromForm,
-} from "../routes/-automations.shared";
 import { ChatTranscriptPane } from "./chat/ChatTranscriptPane";
 import type { MessagesTimelineController } from "./chat/MessagesTimeline";
 import { buildTurnDiffSummaryByAssistantMessageId } from "./chat/MessagesTimeline.logic";
@@ -460,7 +433,6 @@ import { ComposerSlashStatusDialog } from "./chat/ComposerSlashStatusDialog";
 import { ExpandedImageOverlay } from "./chat/ExpandedImageOverlay";
 import { TranscriptSelectionActionLayer } from "./chat/TranscriptSelectionActionLayer";
 import { useChatTerminalController } from "./chat/useChatTerminalController";
-import { useChatAutomationSetup } from "./chat/useChatAutomationSetup";
 import { ComposerActiveTaskListCard } from "./chat/ComposerActiveTaskListCard";
 import { ComposerSubagentStrip } from "./chat/ComposerSubagentStrip";
 import {
@@ -690,44 +662,6 @@ async function waitForShellProjectById(
     }
   }
   return { project: null, snapshot: latestSnapshot };
-}
-
-function automationScheduleActivityPayload(schedule: AutomationSchedule) {
-  switch (schedule.type) {
-    case "manual":
-      return { type: "manual" } as const;
-    case "once":
-      return { type: "once", runAt: schedule.runAt } as const;
-    case "interval":
-      return { type: "interval", everySeconds: schedule.everySeconds } as const;
-    case "daily":
-      return schedule.timezone
-        ? { type: "daily", timeOfDay: schedule.timeOfDay, timezone: schedule.timezone }
-        : { type: "daily", timeOfDay: schedule.timeOfDay };
-    case "weekdays":
-      return schedule.timezone
-        ? { type: "weekdays", timeOfDay: schedule.timeOfDay, timezone: schedule.timezone }
-        : { type: "weekdays", timeOfDay: schedule.timeOfDay };
-    case "weekly":
-      return schedule.timezone
-        ? {
-            type: "weekly",
-            dayOfWeek: schedule.dayOfWeek,
-            timeOfDay: schedule.timeOfDay,
-            timezone: schedule.timezone,
-          }
-        : {
-            type: "weekly",
-            dayOfWeek: schedule.dayOfWeek,
-            timeOfDay: schedule.timeOfDay,
-          };
-    case "cron":
-      return {
-        type: "cron",
-        expression: schedule.expression,
-        timezone: schedule.timezone,
-      } as const;
-  }
 }
 
 function revokeBlobPreviewUrlsAfterPaint(previewUrls: readonly string[]): void {
@@ -1044,20 +978,6 @@ function composerPromptStillMatchesRestoredQueuedDraft(
   }
   const probe = restored.slice(0, Math.min(48, restored.length));
   return probe.length >= 16 && next.includes(probe);
-}
-
-// Builds an ephemeral transcript bubble for the conversational automation-setup
-// exchange. These never reach a provider and are not persisted; they render the
-// back-and-forth (user request, Synara's clarifying questions) inline like Codex.
-function makeAutomationSetupBubble(role: "user" | "assistant", text: string): ChatMessage {
-  return {
-    id: newMessageId(),
-    role,
-    text,
-    createdAt: new Date().toISOString(),
-    streaming: false,
-    source: "native",
-  };
 }
 
 export default function ChatView({
@@ -2621,44 +2541,16 @@ export default function ChatView({
   const activeWorktreeSetup = localDispatch?.worktreeSetup ?? null;
   const isPreparingWorktree = activeWorktreeSetup !== null;
   const hasLiveTurn = phase === "running";
-  const {
-    automationProjects,
-    automationThreads,
-    automationData,
-    automationUpdateMutation,
-    automationDraftForm,
-    setAutomationDraftForm,
-    automationEditingDefinition,
-    setAutomationEditingDefinition,
-    automationDraftWarnings,
-    setAutomationDraftWarnings,
-    setAutomationDraftWarningContext,
-    acknowledgedAutomationWarnings,
-    setAcknowledgedAutomationWarnings,
-    automationDraftOpen,
-    setAutomationDraftOpen,
-    setAutomationDraftDialogOpen,
-    isAutomationDraftSubmitting,
-    setIsAutomationDraftSubmitting,
-    automationDraftSubmittingRef,
-    pendingAutomationConversation,
-    setPendingAutomationConversation,
-    activeThreadIdRef,
-    pendingAutomationConversationRef,
-    hasLiveTurnRef,
-    isPendingSetupBubbleId,
-    cancelAutomationConversation,
-    toggleAutomationWarning,
-    updateAutomationDraftForm,
-    resetAutomationDraftState,
-    openAutomationEditDialog,
-  } = useChatAutomationSetup({
-    threadId,
-    activeProjectId,
-    hasLiveTurn,
-    promptRef,
-    setComposerDraftPrompt,
-  });
+  const isPendingSetupBubbleId = (_messageId: MessageId) => false;
+  const activeThreadIdRef = useRef(threadId);
+  const hasLiveTurnRef = useRef(hasLiveTurn);
+  useEffect(() => {
+    activeThreadIdRef.current = threadId;
+  }, [threadId]);
+  useEffect(() => {
+    hasLiveTurnRef.current = hasLiveTurn;
+  }, [hasLiveTurn]);
+
   const isWorking = hasLiveTurn || isSendBusy || isConnecting || isRevertingCheckpoint;
   const hasStreamingAssistantText =
     activeThread?.messages.some((message) => message.role === "assistant" && message.streaming) ??
@@ -2877,14 +2769,6 @@ export default function ChatView({
             return changed ? { ...message, attachments } : message;
           });
 
-    // Ephemeral automation-setup bubbles render after everything else, at the tail.
-    // Gated on the originating thread so a same-pane switch never leaks the previous
-    // thread's setup into the newly rendered conversation (the reset effect runs after
-    // the first render, so the guard must be here too).
-    const setupBubbles =
-      pendingAutomationConversation && pendingAutomationConversation.threadId === threadId
-        ? pendingAutomationConversation.bubbles
-        : [];
     // Optimistic messages exist only briefly after a send; skip the full-transcript
     // id Set on the common (streaming-flush) path where there is nothing to reconcile.
     let pendingMessages = optimisticUserMessages;
@@ -2896,14 +2780,12 @@ export default function ChatView({
       pendingMessages.length === 0
         ? serverMessagesWithPreviewHandoff
         : [...serverMessagesWithPreviewHandoff, ...pendingMessages];
-    return setupBubbles.length === 0 ? withPending : [...withPending, ...setupBubbles];
+    return withPending;
   }, [
     activeThread?.sidechatSourceThreadId,
     serverMessages,
     attachmentPreviewHandoffByMessageId,
     optimisticUserMessages,
-    pendingAutomationConversation,
-    threadId,
   ]);
   const promptHistory = useMemo(() => {
     const activeMessages = activeThread?.messages ?? EMPTY_MESSAGES;
@@ -6068,333 +5950,6 @@ export default function ChatView({
     ],
   );
 
-  const createAutomationFromForm = useCallback(
-    async (input: {
-      readonly form: AutomationFormState;
-      readonly warnings: readonly AutomationDraftWarning[];
-      readonly acknowledgedWarningIds: ReadonlySet<AutomationDraftWarningId>;
-      readonly providerOptions?: ProviderStartOptions;
-      readonly activityThreadId?: ThreadId | null;
-    }): Promise<boolean> => {
-      const api = readNativeApi();
-      if (!api || !activeProject) {
-        return false;
-      }
-      if (automationDraftSubmittingRef.current) {
-        return false;
-      }
-      if (!isFormSubmittable(input.form)) {
-        return false;
-      }
-      if (hasBlockingAutomationDraftWarnings(input.warnings, input.acknowledgedWarningIds)) {
-        return false;
-      }
-      const acknowledgedRisks = acknowledgedRiskIdsForDraft(
-        input.warnings,
-        input.acknowledgedWarningIds,
-      );
-      const activityThreadId =
-        input.activityThreadId ?? (isServerThread ? (activeThread?.id ?? null) : null);
-      const createdAt = new Date().toISOString();
-      const automationInput = createInputFromForm(
-        input.form,
-        input.providerOptions ?? providerOptionsForDispatch,
-        acknowledgedRisks,
-        activityThreadId,
-      );
-      automationDraftSubmittingRef.current = true;
-      setIsAutomationDraftSubmitting(true);
-      return await (async () => {
-        const definition = await api.automation.create(automationInput);
-        if (activityThreadId) {
-          void (async () => {
-            try {
-              await api.orchestration.dispatchCommand({
-                type: "thread.activity.append",
-                commandId: newCommandId(),
-                threadId: activityThreadId,
-                activity: {
-                  id: EventId.makeUnsafe(randomUUID()),
-                  tone: "info",
-                  kind: "automation.created",
-                  summary: `Created automation: ${definition.name} - ${formatCadence(definition.schedule)}`,
-                  payload: {
-                    source: "chat-composer",
-                    automationId: definition.id,
-                    automationName: definition.name,
-                    mode: definition.mode,
-                    cadenceLabel: formatCadence(definition.schedule),
-                    schedule: automationScheduleActivityPayload(definition.schedule),
-                  },
-                  turnId: null,
-                  createdAt,
-                },
-                createdAt,
-              });
-            } catch {
-              toastManager.add({
-                type: "warning",
-                title: "Thread note not added",
-                description:
-                  "The automation was created, but Synara could not add the activity note.",
-              });
-            }
-          })();
-        }
-        void queryClient.invalidateQueries({ queryKey: automationQueryKey });
-        clearComposerInput(activeThread?.id ?? threadId);
-        resetAutomationDraftState();
-        toastManager.add({
-          type: "success",
-          title: "Automation created",
-          description: `${definition.name} - ${formatCadence(definition.schedule)}`,
-        });
-        return true;
-      })()
-        .catch((error: unknown) => {
-          toastManager.add({
-            type: "error",
-            title: "Could not create automation",
-            description:
-              error instanceof Error ? error.message : "Synara could not save the automation.",
-          });
-          return false;
-        })
-        .finally(() => {
-          automationDraftSubmittingRef.current = false;
-          setIsAutomationDraftSubmitting(false);
-        });
-    },
-    [
-      activeProject,
-      activeThread,
-      automationDraftSubmittingRef,
-      clearComposerInput,
-      isServerThread,
-      providerOptionsForDispatch,
-      queryClient,
-      resetAutomationDraftState,
-      setIsAutomationDraftSubmitting,
-      threadId,
-    ],
-  );
-
-  const ensureAutomationTargetThread = useCallback(
-    async (input: {
-      readonly titleSeed: string;
-      readonly threadModelSelection: ModelSelection;
-      readonly threadRuntimeMode: RuntimeMode;
-      readonly threadInteractionMode: ProviderInteractionMode;
-    }): Promise<ThreadId | null> => {
-      const api = readNativeApi();
-      if (!api || !activeProject || !activeThread) {
-        toastManager.add({
-          type: "warning",
-          title: "Chat required",
-          description: "Open a chat before creating a chat-bound automation.",
-        });
-        return null;
-      }
-      if (isServerThread) {
-        return activeThread.id;
-      }
-
-      const title = buildPromptThreadTitleFallback(input.titleSeed || GENERIC_CHAT_THREAD_TITLE);
-      try {
-        const result = await promoteThreadCreate(
-          {
-            type: "thread.create",
-            commandId: newCommandId(),
-            threadId: activeThread.id,
-            projectId: activeProject.id,
-            title,
-            modelSelection: input.threadModelSelection,
-            runtimeMode: input.threadRuntimeMode,
-            interactionMode: input.threadInteractionMode,
-            envMode: activeThread.envMode ?? (activeThread.worktreePath ? "worktree" : "local"),
-            branch: activeThread.branch ?? null,
-            worktreePath: activeThread.worktreePath ?? null,
-            associatedWorktreePath: activeThreadAssociatedWorktree.associatedWorktreePath,
-            associatedWorktreeBranch: activeThreadAssociatedWorktree.associatedWorktreeBranch,
-            associatedWorktreeRef: activeThreadAssociatedWorktree.associatedWorktreeRef,
-            lastKnownPr: activeThread.lastKnownPr ?? null,
-            createdAt: activeThread.createdAt,
-          },
-          api,
-          { force: true },
-        );
-        if (result === "unavailable") {
-          toastManager.add({
-            type: "error",
-            title: "Could not create chat",
-            description: "Synara could not promote this draft before saving the automation.",
-          });
-          return null;
-        }
-
-        const inheritedProjectInstructions =
-          useProjectInstructionsStore.getState().instructionsByProjectId[activeProject.id] ?? "";
-        const inheritedThreadNotes = mergeProjectInstructionsIntoThreadNotes({
-          threadNotes,
-          projectInstructions: inheritedProjectInstructions,
-        });
-        if (inheritedThreadNotes !== threadNotes && inheritedThreadNotes.trim().length > 0) {
-          void dispatchThreadNotes(activeThread.id, inheritedThreadNotes).catch(() => undefined);
-        }
-
-        return activeThread.id;
-      } catch (error) {
-        toastManager.add({
-          type: "error",
-          title: "Could not create chat",
-          description:
-            error instanceof Error
-              ? error.message
-              : "Synara could not promote this draft before saving the automation.",
-        });
-        return null;
-      }
-    },
-    [activeProject, activeThread, activeThreadAssociatedWorktree, isServerThread, threadNotes],
-  );
-
-  const prepareAutomationFormForCreate = useCallback(
-    async (
-      form: AutomationFormState,
-    ): Promise<{
-      readonly form: AutomationFormState;
-      readonly activityThreadId: ThreadId | null;
-    } | null> => {
-      const activityThreadId = isServerThread ? (activeThread?.id ?? null) : null;
-      if (form.mode !== "heartbeat" || !activeThread) {
-        return { form, activityThreadId };
-      }
-      if (isServerThread || form.targetThreadId !== activeThread.id) {
-        return { form, activityThreadId };
-      }
-
-      // Draft review can keep the local draft ID in the form; promote it only when
-      // the automation is actually submitted so cancelling review leaves no empty thread.
-      const targetThreadId = await ensureAutomationTargetThread({
-        titleSeed: form.prompt || form.name,
-        threadModelSelection: selectedModelSelection,
-        threadRuntimeMode: runtimeMode,
-        threadInteractionMode: interactionMode,
-      });
-      if (!targetThreadId) {
-        return null;
-      }
-      return {
-        form: { ...form, targetThreadId },
-        activityThreadId: targetThreadId,
-      };
-    },
-    [
-      activeThread,
-      ensureAutomationTargetThread,
-      interactionMode,
-      isServerThread,
-      runtimeMode,
-      selectedModelSelection,
-    ],
-  );
-
-  const updateAutomationFromForm = useCallback(
-    async (input: {
-      readonly definition: AutomationDefinition;
-      readonly form: AutomationFormState;
-      readonly warnings: readonly AutomationDraftWarning[];
-      readonly acknowledgedWarningIds: ReadonlySet<AutomationDraftWarningId>;
-      readonly providerOptions?: ProviderStartOptions;
-    }): Promise<boolean> => {
-      if (automationDraftSubmittingRef.current) {
-        return false;
-      }
-      if (!isFormSubmittable(input.form)) {
-        return false;
-      }
-      if (hasBlockingAutomationDraftWarnings(input.warnings, input.acknowledgedWarningIds)) {
-        return false;
-      }
-      const acknowledgedRisks = acknowledgedRiskIdsForFormWarnings(
-        input.warnings,
-        input.acknowledgedWarningIds,
-      );
-      automationDraftSubmittingRef.current = true;
-      setIsAutomationDraftSubmitting(true);
-      return await (async () => {
-        const providerOptions =
-          input.providerOptions ??
-          providerOptionsForAutomationEdit(
-            input.definition,
-            input.form,
-            providerOptionsForDispatch,
-          );
-        const updated = await automationUpdateMutation.mutateAsync(
-          updateInputFromForm(input.definition, input.form, providerOptions, acknowledgedRisks),
-        );
-        resetAutomationDraftState();
-        toastManager.add({
-          type: "success",
-          title: "Automation updated",
-          description: `${updated.name} - ${formatCadence(updated.schedule)}`,
-        });
-        return true;
-      })()
-        .catch(() => false)
-        .finally(() => {
-          automationDraftSubmittingRef.current = false;
-          setIsAutomationDraftSubmitting(false);
-        });
-    },
-    [
-      automationDraftSubmittingRef,
-      automationUpdateMutation,
-      providerOptionsForDispatch,
-      resetAutomationDraftState,
-      setIsAutomationDraftSubmitting,
-    ],
-  );
-
-  const submitAutomationDraft = useCallback(async () => {
-    if (!automationDraftForm) {
-      return;
-    }
-    if (automationEditingDefinition) {
-      await updateAutomationFromForm({
-        definition: automationEditingDefinition,
-        form: automationDraftForm,
-        warnings: automationDraftWarnings,
-        acknowledgedWarningIds: acknowledgedAutomationWarnings,
-      });
-      return;
-    }
-    if (
-      !isFormSubmittable(automationDraftForm) ||
-      hasBlockingAutomationDraftWarnings(automationDraftWarnings, acknowledgedAutomationWarnings)
-    ) {
-      return;
-    }
-    const preparedCreate = await prepareAutomationFormForCreate(automationDraftForm);
-    if (!preparedCreate) {
-      return;
-    }
-    await createAutomationFromForm({
-      form: preparedCreate.form,
-      warnings: automationDraftWarnings,
-      acknowledgedWarningIds: acknowledgedAutomationWarnings,
-      activityThreadId: preparedCreate.activityThreadId,
-    });
-  }, [
-    acknowledgedAutomationWarnings,
-    automationEditingDefinition,
-    automationDraftForm,
-    automationDraftWarnings,
-    createAutomationFromForm,
-    prepareAutomationFormForCreate,
-    updateAutomationFromForm,
-  ]);
-
   const restoreQueuedTurnToComposer = useCallback(
     (queuedTurn: QueuedComposerTurn) => {
       if (!activeThread) {
@@ -6670,16 +6225,12 @@ export default function ChatView({
       composerFileCommentsForSend.length === 0 &&
       sendableComposerTerminalContexts.length === 0 &&
       sendableComposerPastedTexts.length === 0 &&
-      // Provider mentions are structured turn metadata, and automation definitions persist text only.
+      // Provider mentions are structured turn metadata.
       selectedComposerMentionsForSend.length === 0;
     const hasPromptOnlySendableContent = hasNoStructuredComposerContext;
     if (hasPromptOnlySendableContent) {
       const handledSlashCommand = await handleStandaloneSlashCommand(trimmedPromptForSend);
       if (handledSlashCommand) {
-        // A slash command (e.g. /clear) consumes the composer, so abandon any in-progress
-        // automation setup rather than leaving a stale banner/request behind.
-        pendingAutomationConversationRef.current = null;
-        setPendingAutomationConversation(null);
         return true;
       }
     }
@@ -6707,136 +6258,6 @@ export default function ChatView({
       return false;
     }
     if (!activeProject) return false;
-    if (queuedChatTurn === null && !isLivePlanFollowUpSubmission) {
-      const conversation = pendingAutomationConversation;
-      // While gathering missing details, fold the reply into the cleaned request so it
-      // re-resolves as a whole rather than parsing the bare answer (and never re-parses
-      // "could you create an automation" scaffolding as the task).
-      const messageForAutomation = conversation
-        ? `${conversation.accumulatedMessage}\n${trimmedPromptForSend}`
-        : trimmedPromptForSend;
-      const automationRequest = await resolveComposerAutomationRequest({
-        message: messageForAutomation,
-        cwd: activeProject.cwd,
-        generateIntent: (request) => api.server.generateAutomationIntent(request),
-      });
-      // Drop a stale resolve: bail if the user switched threads, or cancelled/changed the
-      // setup, while generateAutomationIntent was awaiting.
-      if (
-        activeThreadIdRef.current !== threadId ||
-        pendingAutomationConversationRef.current !== conversation ||
-        (!hasLiveTurn && hasLiveTurnRef.current)
-      ) {
-        return true;
-      }
-      if (automationRequest.type !== "normal-chat") {
-        if (automationRequest.type === "needs-clarification") {
-          // Conversational setup only runs for prompt-only sends while no turn is live:
-          // clearing the composer would drop attachments/mentions Cancel can't restore,
-          // and ephemeral setup bubbles must not anchor a running turn's work rows.
-          if (!hasPromptOnlySendableContent || hasLiveTurn) {
-            toastManager.add({
-              type: "warning",
-              title: "Automation needs a bit more detail",
-              description:
-                automationRequest.reason ??
-                'Add what it should do and how often, e.g. "every weekday at 9am, summarize my PRs".',
-            });
-            return true;
-          }
-          // Render the exchange in-thread: echo the user's words as a bubble and ask for
-          // what's missing as an assistant bubble. Nothing reaches a provider; the cleaned
-          // automationMessage accumulates for the next re-resolve and for Cancel's restore.
-          const question = automationClarificationPrompt(automationRequest.missingFields);
-          const priorBubbles = conversation?.bubbles ?? [];
-          // Drop the submitted request from the composer (it is captured in
-          // accumulatedMessage, so re-folding it would duplicate the scaffold) while
-          // preserving anything typed *after* it during the async resolve.
-          const liveDraft = promptRef.current.trimStart();
-          const leftover = liveDraft.startsWith(trimmedPromptForSend)
-            ? liveDraft.slice(trimmedPromptForSend.length).trimStart()
-            : liveDraft;
-          promptRef.current = leftover;
-          setComposerDraftPrompt(activeThread.id, leftover);
-          setComposerTrigger(null);
-          // Bring the new question into view even if the user had scrolled up.
-          armTranscriptAutoFollow(activeThread.id, true);
-          setPendingAutomationConversation({
-            threadId: activeThread.id,
-            accumulatedMessage: automationRequest.automationMessage,
-            bubbles: [
-              ...priorBubbles,
-              makeAutomationSetupBubble("user", trimmedPromptForSend),
-              makeAutomationSetupBubble("assistant", question),
-            ],
-          });
-          return true;
-        }
-
-        pendingAutomationConversationRef.current = null;
-        setPendingAutomationConversation(null);
-        const automationIntent = automationRequest.resolution.intent;
-        const automationTargetThreadId =
-          automationIntent.executionScope === "thread" ? activeThread.id : null;
-        const automationDraft = buildComposerAutomationDraft({
-          resolution: automationRequest.resolution,
-          projectId: activeProject.id,
-          projectModelSelection: automationProjectModelSelection(
-            automationProjects,
-            activeProject.id,
-          ),
-          selectedModelSelection: selectedModelSelectionForSend,
-          targetThreadId: automationTargetThreadId,
-          hasEphemeralContext: !hasPromptOnlySendableContent,
-        });
-        // A multi-turn setup always confirms before creating, so the user reviews the
-        // parsed task/schedule (and any scaffolding the parser kept) rather than it
-        // silently auto-creating a recurring job.
-        if (automationDraft.needsDraftReview || conversation !== null) {
-          if (conversation !== null) {
-            // Keep the full multi-turn request in the composer so dismissing the review
-            // dialog doesn't lose it (the single-turn path likewise leaves its text).
-            // Restore only the text; any attachments/mentions on the final reply stay.
-            const liveDraft = promptRef.current.trimStart();
-            const leftover = liveDraft.startsWith(trimmedPromptForSend)
-              ? liveDraft.slice(trimmedPromptForSend.length).trimStart()
-              : liveDraft;
-            const restoredPrompt = leftover
-              ? `${messageForAutomation}\n${leftover}`
-              : messageForAutomation;
-            promptRef.current = restoredPrompt;
-            setComposerDraftPrompt(activeThread.id, restoredPrompt);
-          }
-          setAutomationEditingDefinition(null);
-          setAutomationDraftWarningContext(automationDraft.warningContext);
-          setAutomationDraftForm(automationDraft.form);
-          setAutomationDraftWarnings(automationDraft.warnings);
-          setAcknowledgedAutomationWarnings(automationDraft.acknowledgedWarningIds);
-          setAutomationDraftOpen(true);
-          return true;
-        }
-        const preparedAutomation = await prepareAutomationFormForCreate(automationDraft.form);
-        if (!preparedAutomation) {
-          return true;
-        }
-        await createAutomationFromForm({
-          form: preparedAutomation.form,
-          warnings: automationDraft.warnings,
-          acknowledgedWarningIds: automationDraft.acknowledgedWarningIds,
-          activityThreadId: preparedAutomation.activityThreadId,
-          ...(providerOptionsForDispatchForSend
-            ? { providerOptions: providerOptionsForDispatchForSend }
-            : {}),
-        });
-        return true;
-      }
-      if (conversation) {
-        // The combined text no longer reads as an automation; abandon setup and let
-        // this message send as a normal chat turn instead of looping on the question.
-        pendingAutomationConversationRef.current = null;
-        setPendingAutomationConversation(null);
-      }
-    }
     sendPreflightInFlightRef.current = true;
     const sendProviderAvailability = await resolveProviderSendAvailabilityWithRefresh({
       provider: selectedModelSelectionForSend.provider,
@@ -9407,15 +8828,6 @@ export default function ChatView({
 
     const { snapshot, trigger } = resolveActiveComposerTrigger();
     const menuIsActive = composerMenuOpenRef.current || trigger !== null;
-    if (
-      key === "Enter" &&
-      !event.shiftKey &&
-      !menuIsActive &&
-      extractChatAutomationInvocation(snapshot.value) !== null
-    ) {
-      void onSend(undefined, event.metaKey || event.ctrlKey ? "steer" : "queue");
-      return true;
-    }
 
     if (menuIsActive && isLocalFolderBrowserOpen) {
       if (key === "ArrowDown") {
@@ -9576,15 +8988,6 @@ export default function ChatView({
       });
     },
     [isEditorRail, navigate],
-  );
-  const onOpenAutomation = useCallback(
-    (automationId: string) => {
-      void navigate({
-        to: "/automations/$automationId",
-        params: { automationId },
-      });
-    },
-    [navigate],
   );
   const activeProjectIdForNewChat = activeProject?.id ?? null;
   const onNewEditorChat = useCallback(() => {
@@ -9921,11 +9324,6 @@ export default function ChatView({
     </div>
   ) : null;
 
-  const threadAutomationItems = heartbeatAutomationsForThread(
-    automationData.definitions,
-    activeThread.id,
-  ).map((definition) => ({ definition }));
-
   // Shared inputs for both Environment panel surfaces (the header Popover when the dock is
   // open, and the docked right column when it is closed) so the two never drift.
   const environmentPanelProps: Omit<EnvironmentPanelProps, "open" | "variant"> = {
@@ -9942,7 +9340,6 @@ export default function ChatView({
     studioFolderPath: isStudioContainer ? resolvedThreadWorktreePath : null,
     showGitActions,
     diffOpen: resolvedDiffOpen,
-    threadAutomations: threadAutomationItems,
     diffDisabledReason,
     diffTotals: repoDiffTotals,
     branchToolbar: branchToolbarProps,
@@ -9958,7 +9355,6 @@ export default function ChatView({
     onProjectInstructionsChange: setProjectInstructions,
     onCopyProjectInstructionsToNotes: handleCopyProjectInstructionsToNotes,
     onToggleDiff,
-    onOpenAutomation: openAutomationEditDialog,
     onOpenGithubRepository: openBrowserUrl,
     onJumpToPinnedMessage: handleJumpToPinnedMessage,
     onTogglePinnedMessageDone: handleTogglePinnedMessageDone,
@@ -10141,14 +9537,6 @@ export default function ChatView({
                           id: activeProposedPlan.id,
                           title: proposedPlanTitle(activeProposedPlan.planMarkdown) ?? null,
                         }
-                      : null
-                  }
-                  automationSetup={
-                    !activePendingApproval &&
-                    pendingUserInputs.length === 0 &&
-                    pendingAutomationConversation &&
-                    pendingAutomationConversation.threadId === threadId
-                      ? { onCancel: cancelAutomationConversation }
                       : null
                   }
                 />
@@ -10666,22 +10054,6 @@ export default function ChatView({
         onOpenChange={setRenameDialogOpen}
         onSave={handleRenameActiveThread}
       />
-      {automationDraftForm ? (
-        <AutomationDialog
-          open={automationDraftOpen}
-          editing={automationEditingDefinition !== null}
-          form={automationDraftForm}
-          projects={automationProjects}
-          threads={automationThreads}
-          warnings={automationDraftWarnings}
-          acknowledgedWarningIds={acknowledgedAutomationWarnings}
-          onToggleWarning={toggleAutomationWarning}
-          onOpenChange={setAutomationDraftDialogOpen}
-          onFormChange={updateAutomationDraftForm}
-          onSubmit={submitAutomationDraft}
-          busy={isAutomationDraftSubmitting || automationUpdateMutation.isPending}
-        />
-      ) : null}
 
       {/* Error banner */}
       <ProviderHealthBanner
@@ -10795,7 +10167,6 @@ export default function ChatView({
                     turnDiffSummaryByAssistantMessageId={turnDiffSummaryByAssistantMessageId}
                     onOpenTurnDiff={onOpenTurnDiff}
                     onOpenThread={onNavigateToThread}
-                    onOpenAutomation={onOpenAutomation}
                     subagentToolTraceByThreadId={subagentToolTraceByThreadId}
                     revertTurnCountByUserMessageId={revertTurnCountByUserMessageId}
                     onRevertUserMessage={onRevertUserMessage}

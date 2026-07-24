@@ -18,7 +18,6 @@ export const BUILT_IN_COMPOSER_SLASH_COMMANDS = [
   "fast",
   "export",
   "feedback",
-  "automation",
 ] as const;
 
 export type BuiltInComposerSlashCommand = (typeof BUILT_IN_COMPOSER_SLASH_COMMANDS)[number];

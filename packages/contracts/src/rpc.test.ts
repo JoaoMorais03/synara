@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  WsAutomationCreateRpc,
-  WsAutomationGetMemoryRpc,
-  WsAutomationResolveProposalRpc,
   WsBootstrapRpcGroup,
   WsFeatureRpcGroup,
   WsProjectsDiscoverScriptsRpc,
@@ -32,12 +29,6 @@ describe("WS RPC contracts", () => {
 
   it("exports the project script discovery RPC", () => {
     expect(WsProjectsDiscoverScriptsRpc).toBeDefined();
-  });
-
-  it("exports the automation create RPC", () => {
-    expect(WsAutomationCreateRpc).toBeDefined();
-    expect(WsAutomationGetMemoryRpc).toBeDefined();
-    expect(WsAutomationResolveProposalRpc).toBeDefined();
   });
 
   it("exports the count-only pull request review RPC", () => {

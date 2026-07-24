@@ -35,8 +35,7 @@ import {
   ServerConfigUpdatedPayload,
   WS_CHANNELS,
   WS_METHODS,
-  type WsWelcomePayload,
-  type AutomationStreamEvent,
+  type WsWelcomePayload
 } from "@synara/contracts";
 import { VOICE_TRANSCRIPTION_UPLOAD_ROUTE_PATH } from "@synara/shared/binaryTransfer";
 
@@ -116,7 +115,6 @@ function omitNullUserInputAnswers(
 }
 const terminalEventListeners = createListenerRegistry<TerminalEvent>();
 const projectDevServerEventListeners = createListenerRegistry<ProjectDevServerEvent>();
-const automationEventListeners = createListenerRegistry<AutomationStreamEvent>();
 const orchestrationDomainEventListeners = createListenerRegistry<OrchestrationEvent>();
 const orchestrationShellEventListeners = createListenerRegistry<OrchestrationShellStreamItem>();
 const orchestrationThreadEventListeners = createListenerRegistry<OrchestrationThreadStreamItem>();
@@ -132,7 +130,6 @@ function clearWsNativeApiListeners(): void {
   gitActionProgressListeners.clear();
   terminalEventListeners.clear();
   projectDevServerEventListeners.clear();
-  automationEventListeners.clear();
   orchestrationDomainEventListeners.clear();
   orchestrationShellEventListeners.clear();
   orchestrationThreadEventListeners.clear();
@@ -399,9 +396,6 @@ export function createWsNativeApi(): NativeApi {
   transport.subscribe(WS_CHANNELS.projectDevServerEvent, (message) => {
     projectDevServerEventListeners.emit(message.data);
   });
-  transport.subscribe(WS_CHANNELS.automationEvent, (message) => {
-    automationEventListeners.emit(message.data);
-  });
   transport.subscribe(ORCHESTRATION_WS_CHANNELS.shellEvent, (message) => {
     orchestrationShellEventListeners.emit(message.data);
   });
@@ -625,10 +619,6 @@ export function createWsNativeApi(): NativeApi {
         transport.request(WS_METHODS.serverGenerateThreadRecap, input, {
           timeoutMs: null,
         }),
-      generateAutomationIntent: (input) =>
-        transport.request(WS_METHODS.serverGenerateAutomationIntent, input, {
-          timeoutMs: null,
-        }),
       transcribeVoice: (input) => {
         if (window.desktopBridge?.server?.transcribeVoice) {
           return window.desktopBridge.server.transcribeVoice(input);
@@ -704,19 +694,6 @@ export function createWsNativeApi(): NativeApi {
       },
       onShellEvent: orchestrationShellEventListeners.subscribe,
       onThreadEvent: orchestrationThreadEventListeners.subscribe,
-    },
-    automation: {
-      list: (input) => transport.request(WS_METHODS.automationList, input),
-      getMemory: (input) => transport.request(WS_METHODS.automationGetMemory, input),
-      create: (input) => transport.request(WS_METHODS.automationCreate, input),
-      update: (input) => transport.request(WS_METHODS.automationUpdate, input),
-      delete: (input) => transport.request(WS_METHODS.automationDelete, input),
-      runNow: (input) => transport.request(WS_METHODS.automationRunNow, input),
-      cancelRun: (input) => transport.request(WS_METHODS.automationCancelRun, input),
-      markRunRead: (input) => transport.request(WS_METHODS.automationMarkRunRead, input),
-      archiveRun: (input) => transport.request(WS_METHODS.automationArchiveRun, input),
-      resolveProposal: (input) => transport.request(WS_METHODS.automationResolveProposal, input),
-      onEvent: automationEventListeners.subscribe,
     },
     browser: {
       open: async (input) => {

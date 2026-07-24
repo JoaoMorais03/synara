@@ -1,83 +1,70 @@
-# 008 — macOS Simple ADE product focus
+# 008 — macOS Simple ADE (CLI harness)
 
-**Branch:** `feat/macos-simple-ade` (fork `JoaoMorais03/synara` only — not `main` until review)  
-**Vision:** Simple, intuitive ADE for macOS — a **harness around native CLIs**, not an agent that orchestrates Synara via MCP.
+**Branch:** `feat/macos-simple-ade` (fork only — not `main` until review)
 
-## Product model (authoritative)
+## Product model
 
-Synara wraps CLIs you already use (Claude Code, Codex, Cursor, Grok, OpenCode, …) with a focused desktop shell: chats UI, terminals, worktrees, diffs, providers, etc.
+Synara is a **simple desktop harness around bare native CLIs**.
 
-- Users talk to **native CLIs**, not to “Synara as an MCP server.”
-- Agents **never** need to call back into Synara (`synara_*` tools / `POST /mcp` are gone).
-- Browser UI (`bun run dev:test`) is a **local test harness only**, not a web product.
+- You open terminals and run `claude` / `codex` / etc. The CLIs own agent brains.
+- Synara owns: window shell, projects, terminals, git, worktrees, local state.
+- **Not** an MCP hub, **not** an in-app agent control plane, **not** scheduled automations.
 
-## Decisions
+## Done on this branch
 
-| Decision | Choice | Why |
-|----------|--------|-----|
-| Product surface | macOS desktop ADE only | Simple ADE vision |
-| `apps/web` | Keep as Electron renderer + test harness | Not a shipped web product |
-| External MCP | **Deleted** (Phase C) | No remote orchestration hub |
-| In-app agent gateway MCP | **Deleted** (Phase D) | CLI harness — agents do not interact with Synara |
-| Automations MCP report tools | Envelope rewritten | No `synara_report_*` instructions; UI/backend automations may need later redesign |
-| Migrations for empty MCP tables | **Keep** | Historical SQLite lineage |
-| `creationSource` / historical tool labels | **Keep** | Old projection/UI rows |
+| Phase | What |
+|-------|------|
+| A | Marketing gone; desktop default; External MCP UI/CLI; `dev:test` harness |
+| C | External MCP server/contracts deleted |
+| D | In-app agent gateway (`POST /mcp`, `synara_*`) deleted |
+| E | **Automations product fully removed** (server, UI, WS, contracts) |
+| E | **`@synara/cli` → `@synara/backend`** (package + turbo filters + scripts) |
+| E | **Claude host prompt append emptied** (no Synara personality injection) |
 
-## Phase A–C (landed)
+## Keep (harness)
 
-- Marketing site removed; desktop default; External MCP product surface + full server/contracts gut
-- README ADE vision; `dev:test` for browser-without-Electron testing
+| Area | Why |
+|------|-----|
+| Terminals | Bare CLI surface |
+| Git / worktrees / PRs | Harness features you want |
+| Orchestration + chat UI | Still the current session/UI model (see below) |
+| Provider adapters | Still how chat sessions talk to CLIs today |
+| Local loopback auth | Desktop needs a local backend handshake |
+| Historical enums | `dispatchOrigin: "automation"`, old MCP labels |
 
-## Phase D (landed) — Agent gateway MCP removed
+## Honest gap: “just open a terminal and run claude”
 
-### Deleted
-- Entire `apps/server/src/agentGateway/**`
-- `packages/contracts/src/agentGateway.ts` (+ tests)
-- `POST /mcp` route, credentials, operation repository, creation coordinator, tool catalog
+**Today:** chat still spawns CLIs through **provider adapters** (ACP/SDK/app-server) and streams into the chat timeline. That is **not** “open a terminal and type `claude`.” It is why `provider/` is large (~100+ files).
 
-### Provider unhook
-- Claude / Codex / Cursor / Grok / OpenCode: **no** Synara MCP injection, session leases, or “use synara_* tools” harness policy
-- Codex managed TOML no longer appends `[mcp_servers.synara]`
+**True bare-CLI harness would mean:**
 
-### Kept / moved
-- `provider/threadMessagePagination.ts` — thread:// mention transcript paging (was inside gateway)
-- Host identity prompts may remain; not MCP tool policy
-- Migrations `070` / `072` AgentGatewayOperations (empty tables OK)
+1. Remove (or stop using) chat-as-embedded-agent-session.
+2. “Start Claude” = open a **terminal** in the project cwd with the binary.
+3. Delete most of `provider/Layers/*Adapter` over time once nothing calls them.
 
-### Blast radius (honest)
-| Gone | Still works |
-|------|-------------|
-| Agent creates/steers Synara threads via tools | User chats via ADE UI + native CLIs |
-| Agent multi-thread fan-out via Synara | Terminals, worktrees from UI |
-| Agent automation report/memory MCP tools | Provider sessions as plain CLIs |
-| `POST /mcp` | Historical UI labels for old tool calls |
+That is a **product redesign**, not a drive-by delete. Doing it mid-chat-stack without a terminal-first UX would leave a dead ADE.
 
-## How to run
+**Next work if you want bare terminals only:** design “New session → Terminal tab running `claude`” and retire provider session UI paths one provider at a time.
 
-```sh
-bun install
-bun run dev          # product: Electron ADE
-bun run dev:test     # testing only: backend + browser
-bun run dist:desktop:dmg
-```
-
-## HTTP after Phase D
-
-| Path | Status |
-|------|--------|
-| `POST /mcp` | **GONE** |
-| `POST /mcp/external` | **GONE** |
-| WS app RPCs (chats, settings, …) | **KEEP** |
-
-## Still deferred
+## Still open (smaller)
 
 | Item | Notes |
 |------|-------|
-| Automations product redesign | Report/memory protocol lost with gateway |
-| `@synara/cli` package rename | Packaging |
-| DROP TABLE empty MCP tables | Optional hygiene |
-| Remote auth trim / ORCA rebrand / mac-only CI | Product calls |
+| Remote pairing / multi-client auth trim | Local-only ADE; pairing routes still exist for legacy remote |
+| Empty MCP / automation **tables** | Keep migrations; optional DROP migration later |
+| CI `release.yml` linux/win | Optional mac-only |
+| ORCA rebrand | Naming later |
+| Orphan `apps/marketing/node_modules` | Disk junk |
 
-## PR stance
+## Run
 
-**Do not merge to `main` without explicit user approval.**
+```sh
+bun install
+bun run dev          # Electron ADE
+bun run dev:test     # browser test harness
+bun run dist:desktop:dmg
+```
+
+## PR
+
+Do **not** merge to `main` without explicit approval.

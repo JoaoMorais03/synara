@@ -84,14 +84,6 @@ describe("isSummarizableToolCallEntry", () => {
     expect(
       isSummarizableToolCallEntry(
         workEntry({
-          id: "auto",
-          automation: { id: "a", name: "Nightly", cadenceLabel: "daily" },
-        }),
-      ),
-    ).toBe(false);
-    expect(
-      isSummarizableToolCallEntry(
-        workEntry({
           id: "threads",
           synaraThreadCreation: {
             operationId: "op",

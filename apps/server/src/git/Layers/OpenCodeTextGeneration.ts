@@ -36,8 +36,6 @@ import {
   OpenCodeTextGeneration,
 } from "../Services/TextGeneration.ts";
 import {
-  buildAutomationIntentPrompt,
-  buildAutomationCompletionEvaluationPrompt,
   buildBranchNamePrompt,
   buildCommitMessagePrompt,
   buildDiffSummaryPrompt,
@@ -660,53 +658,6 @@ const makeOpenCodeCompatibleTextGeneration = (config: OpenCodeCompatibleTextGene
       };
     });
 
-    const generateAutomationIntent: TextGenerationShape["generateAutomationIntent"] = Effect.fn(
-      `${config.serviceName}.generateAutomationIntent`,
-    )(function* (input) {
-      const modelSelection = resolveOpenCodeCompatibleModelSelection(config, input);
-      if (!modelSelection) {
-        return yield* new TextGenerationError({
-          operation: "generateAutomationIntent",
-          detail: `Invalid ${config.displayName} model selection.`,
-        });
-      }
-
-      const { prompt, outputSchemaJson } = buildAutomationIntentPrompt({
-        message: input.message,
-        ...(input.defaultMode ? { defaultMode: input.defaultMode } : {}),
-        nowIso: input.nowIso,
-      });
-      return yield* runOpenCodeJson({
-        operation: "generateAutomationIntent",
-        cwd: input.cwd,
-        prompt,
-        outputSchemaJson,
-        modelSelection,
-        ...(input.providerOptions ? { providerOptions: input.providerOptions } : {}),
-      });
-    });
-
-    const evaluateAutomationCompletion: TextGenerationShape["evaluateAutomationCompletion"] =
-      Effect.fn(`${config.serviceName}.evaluateAutomationCompletion`)(function* (input) {
-        const modelSelection = resolveOpenCodeCompatibleModelSelection(config, input);
-        if (!modelSelection) {
-          return yield* new TextGenerationError({
-            operation: "evaluateAutomationCompletion",
-            detail: `Invalid ${config.displayName} model selection.`,
-          });
-        }
-
-        const { prompt, outputSchemaJson } = buildAutomationCompletionEvaluationPrompt(input);
-        return yield* runOpenCodeJson({
-          operation: "evaluateAutomationCompletion",
-          cwd: input.cwd,
-          prompt,
-          outputSchemaJson,
-          modelSelection,
-          ...(input.providerOptions ? { providerOptions: input.providerOptions } : {}),
-        });
-      });
-
     return {
       generateCommitMessage,
       generatePrContent,
@@ -714,8 +665,6 @@ const makeOpenCodeCompatibleTextGeneration = (config: OpenCodeCompatibleTextGene
       generateBranchName,
       generateThreadTitle,
       generateThreadRecap,
-      generateAutomationIntent,
-      evaluateAutomationCompletion,
     } satisfies TextGenerationShape;
   });
 

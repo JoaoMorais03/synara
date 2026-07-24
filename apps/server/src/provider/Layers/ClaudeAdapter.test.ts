@@ -336,11 +336,9 @@ const THREAD_ID = ThreadId.makeUnsafe("thread-claude-1");
 const RESUME_THREAD_ID = ThreadId.makeUnsafe("thread-claude-resume");
 
 describe("Claude embedded system prompt", () => {
-  it("describes the host app without Synara MCP / synara_* tools", () => {
+  it("does not inject Synara host personality into bare Claude Code", () => {
     const text = buildEmbeddedClaudeSystemPromptAppend();
-    assert.include(text, "You are running inside Synara");
-    assert.notInclude(text, "synara_");
-    assert.notInclude(text, "Synara MCP");
+    assert.equal(text, "");
   });
 });
 
@@ -416,10 +414,7 @@ describe("ClaudeAdapterLive", () => {
       }
       assert.equal(systemPrompt.preset, "claude_code");
       assert.equal(systemPrompt.excludeDynamicSections, true);
-      assert.include(systemPrompt.append ?? "", "When spawning subagents");
-      assert.include(systemPrompt.append ?? "", "worker-<tier>");
-      assert.notInclude(systemPrompt.append ?? "", "synara_");
-      assert.notInclude(systemPrompt.append ?? "", "Synara MCP");
+      assert.equal(systemPrompt.append ?? "", "");
       assert.equal(createInput?.options.mcpServers, undefined);
     }).pipe(
       Effect.provideService(Random.Random, makeDeterministicRandomService()),

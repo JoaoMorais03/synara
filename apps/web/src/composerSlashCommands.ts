@@ -82,8 +82,7 @@ function shouldKeepBuiltInSlashCommandDespiteNativeCollision(
   command: ComposerSlashCommand,
 ): boolean {
   return (
-    command === "automation" ||
-    command === "export" ||
+command === "export" ||
     command === "feedback" ||
     (providerUsesAppOwnedReviewSlashCommand(provider) && command === "review")
   );
@@ -97,8 +96,7 @@ export function shouldHideProviderNativeCommandFromComposerMenu(
   const normalizedCommand = normalizeComposerSlashCommandName(command);
   const appCommandIsAvailable = options.availableAppCommands?.has(normalizedCommand) ?? true;
   return (
-    normalizedCommand === "automation" ||
-    (normalizedCommand === "export" && appCommandIsAvailable) ||
+(normalizedCommand === "export" && appCommandIsAvailable) ||
     (normalizedCommand === "feedback" && appCommandIsAvailable) ||
     (providerUsesAppOwnedReviewSlashCommand(provider) && normalizedCommand === "review")
   );
@@ -209,12 +207,6 @@ const COMPOSER_SLASH_COMMAND_DEFINITIONS: Record<
     command: "feedback",
     label: "/feedback",
     description: "Send feedback to the Synara team",
-    source: "app",
-  },
-  automation: {
-    command: "automation",
-    label: "/automation",
-    description: "Create a scheduled automation from this prompt",
     source: "app",
   },
 };
@@ -412,7 +404,6 @@ export function getAvailableComposerSlashCommands(input: {
           "subagents",
           ...(input.canOfferExportCommand ? (["export"] as const) : []),
           "feedback",
-          "automation",
         ]
       : [
           // Claude owns most slash-command UX natively; sidechat remains app-level because it
@@ -422,7 +413,6 @@ export function getAvailableComposerSlashCommands(input: {
           ...(input.canOfferSideCommand ? (["side"] as const) : []),
           ...(input.canOfferExportCommand ? (["export"] as const) : []),
           "feedback",
-          "automation",
         ];
   return availableCommands.filter((command) => !collidingNativeCommandNames.has(command));
 }

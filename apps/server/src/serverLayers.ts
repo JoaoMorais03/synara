@@ -1,9 +1,6 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { Layer } from "effect";
 
-import { AutomationRunReactorLive } from "./automation/Layers/AutomationRunReactor";
-import { AutomationSchedulerLive } from "./automation/Layers/AutomationScheduler";
-import { AutomationServiceLive } from "./automation/Layers/AutomationService";
 import { CheckpointDiffQueryLive } from "./checkpointing/Layers/CheckpointDiffQuery";
 import { CheckpointStoreLive } from "./checkpointing/Layers/CheckpointStore";
 import { CheckpointReactorLive } from "./orchestration/Layers/CheckpointReactor";
@@ -35,9 +32,7 @@ import { ServerSettingsLive } from "./serverSettings";
 import { WorkspaceLayerLive } from "./workspace/runtimeLayer";
 import { ProjectFaviconResolverLive } from "./project/Layers/ProjectFaviconResolver";
 import { ServerEnvironmentLive } from "./environment/Layers/ServerEnvironment";
-import { AutomationRepositoryLive } from "./persistence/Layers/AutomationRepository";
 import { ProjectPullRequestPinsLive } from "./persistence/Layers/ProjectPullRequestPins";
-import { ProjectionTurnRepositoryLive } from "./persistence/Layers/ProjectionTurns";
 import { OrchestrationEventDeliveryRepositoryLive } from "./persistence/Layers/OrchestrationEventDeliveries";
 import { ManagedAttachmentCleanupLive } from "./managedAttachmentCleanup";
 import { PullRequestServiceLive } from "./pullRequests/Layers/PullRequestService";
@@ -119,21 +114,6 @@ export function makeServerRuntimeServicesLayer() {
     authControlPlaneLayer,
     serverAuthLayer,
   );
-  const automationServiceLayer = AutomationServiceLive.pipe(
-    Layer.provideMerge(AutomationRepositoryLive),
-    Layer.provideMerge(ProjectionTurnRepositoryLive),
-    Layer.provideMerge(GitCoreLive),
-    Layer.provideMerge(TextGenerationLayerLive),
-    Layer.provideMerge(ServerSettingsLive),
-    Layer.provideMerge(runtimeServicesLayer),
-  );
-  const automationSchedulerLayer = AutomationSchedulerLive.pipe(
-    Layer.provideMerge(automationServiceLayer),
-    Layer.provideMerge(AutomationRepositoryLive),
-  );
-  const automationRunReactorLayer = AutomationRunReactorLive.pipe(
-    Layer.provideMerge(automationServiceLayer),
-  );
   const pullRequestServiceLayer = PullRequestServiceLive.pipe(
     Layer.provideMerge(GitLayerLive),
     Layer.provideMerge(ProjectPullRequestPinsLive),
@@ -141,11 +121,7 @@ export function makeServerRuntimeServicesLayer() {
   );
 
   return Layer.mergeAll(
-    automationServiceLayer,
-    automationSchedulerLayer,
-    automationRunReactorLayer,
     managedAttachmentCleanupLayer,
-    AutomationRepositoryLive,
     providerHealthLayer,
     ProjectPullRequestPinsLive,
     pullRequestServiceLayer,

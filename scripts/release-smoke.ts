@@ -91,8 +91,10 @@ function verifyCanonicalIdentity(): void {
   const serverPackage = JSON.parse(
     readFileSync(resolve(repoRoot, "apps/server/package.json"), "utf8"),
   ) as { name?: string; bin?: Record<string, string> };
-  if (serverPackage.name !== "@synara/cli") {
-    throw new Error(`Expected CLI package @synara/cli, got ${serverPackage.name ?? "<missing>"}.`);
+  if (serverPackage.name !== "@synara/backend") {
+    throw new Error(
+      `Expected backend package @synara/backend, got ${serverPackage.name ?? "<missing>"}.`,
+    );
   }
   const expectedBinaries = {
     synara: "dist/index.mjs",
@@ -286,7 +288,7 @@ function verifyDesktopStageLockAuthority(): void {
   const buildScript = readFileSync(resolve(repoRoot, "scripts/build-desktop-artifact.ts"), "utf8");
   assertContains(
     buildScript,
-    "bun install --production --frozen-lockfile --ignore-scripts --linker hoisted --filter @synara/cli --filter @synara/desktop",
+    "bun install --production --frozen-lockfile --ignore-scripts --linker hoisted --filter @synara/backend --filter @synara/desktop",
     "Expected desktop staging to install only from the repository's frozen workspace lockfile.",
   );
   assertNotContains(

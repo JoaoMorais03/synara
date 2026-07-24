@@ -2,19 +2,6 @@ import { Schema, Struct } from "effect";
 import { NonNegativeInt, ProjectId, ThreadId, TrimmedNonEmptyString } from "./baseSchemas";
 
 import {
-  AutomationCancelRunInput,
-  AutomationArchiveRunInput,
-  AutomationCreateInput,
-  AutomationDeleteInput,
-  AutomationGetMemoryInput,
-  AutomationListInput,
-  AutomationMarkRunReadInput,
-  AutomationResolveProposalInput,
-  AutomationRunNowInput,
-  AutomationStreamEvent,
-  AutomationUpdateInput,
-} from "./automation";
-import {
   ClientOrchestrationCommand,
   OrchestrationEvent,
   OrchestrationImportThreadInput,
@@ -95,7 +82,6 @@ import {
 import { OpenInEditorInput } from "./editor";
 import {
   ServerConfigUpdatedPayload,
-  ServerGenerateAutomationIntentInput,
   ServerGenerateThreadRecapInput,
   ServerLifecycleStreamEvent,
   ServerProviderUpdateInput,
@@ -220,7 +206,6 @@ export const WS_METHODS = {
   serverGetDiagnostics: "server.getDiagnostics",
   serverTranscribeVoice: "server.transcribeVoice",
   serverGenerateThreadRecap: "server.generateThreadRecap",
-  serverGenerateAutomationIntent: "server.generateAutomationIntent",
   serverUpsertKeybinding: "server.upsertKeybinding",
   subscribeServerLifecycle: "server.subscribeLifecycle",
   subscribeServerConfig: "server.subscribeConfig",
@@ -242,19 +227,6 @@ export const WS_METHODS = {
   providerListModels: "provider.listModels",
   providerListAgents: "provider.listAgents",
 
-  // Automation methods
-  automationList: "automation.list",
-  automationGetMemory: "automation.getMemory",
-  automationCreate: "automation.create",
-  automationUpdate: "automation.update",
-  automationDelete: "automation.delete",
-  automationRunNow: "automation.runNow",
-  automationCancelRun: "automation.cancelRun",
-  automationMarkRunRead: "automation.markRunRead",
-  automationArchiveRun: "automation.archiveRun",
-  automationResolveProposal: "automation.resolveProposal",
-  subscribeAutomationEvents: "automation.subscribe",
-
   // Project database connections (simple query pane)
   databaseListConnections: "database.listConnections",
   databaseUpsertConnection: "database.upsertConnection",
@@ -268,7 +240,6 @@ export const WS_METHODS = {
 // ── Push Event Channels ──────────────────────────────────────────────
 
 export const WS_CHANNELS = {
-  automationEvent: "automation.event",
   gitActionProgress: "git.actionProgress",
   terminalEvent: "terminal.event",
   projectDevServerEvent: "project.devServerEvent",
@@ -402,7 +373,6 @@ const WebSocketRequestBody = Schema.Union([
   tagRequestBody(WS_METHODS.serverGetDiagnostics, Schema.Struct({})),
   tagRequestBody(WS_METHODS.serverTranscribeVoice, ServerVoiceTranscriptionInput),
   tagRequestBody(WS_METHODS.serverGenerateThreadRecap, ServerGenerateThreadRecapInput),
-  tagRequestBody(WS_METHODS.serverGenerateAutomationIntent, ServerGenerateAutomationIntentInput),
   tagRequestBody(WS_METHODS.serverUpsertKeybinding, KeybindingRule),
 
   // Provider discovery
@@ -415,19 +385,6 @@ const WebSocketRequestBody = Schema.Union([
   tagRequestBody(WS_METHODS.providerReadPlugin, ProviderReadPluginInput),
   tagRequestBody(WS_METHODS.providerListModels, ProviderListModelsInput),
   tagRequestBody(WS_METHODS.providerListAgents, ProviderListAgentsInput),
-
-  // Automation methods
-  tagRequestBody(WS_METHODS.automationList, AutomationListInput),
-  tagRequestBody(WS_METHODS.automationGetMemory, AutomationGetMemoryInput),
-  tagRequestBody(WS_METHODS.automationCreate, AutomationCreateInput),
-  tagRequestBody(WS_METHODS.automationUpdate, AutomationUpdateInput),
-  tagRequestBody(WS_METHODS.automationDelete, AutomationDeleteInput),
-  tagRequestBody(WS_METHODS.automationRunNow, AutomationRunNowInput),
-  tagRequestBody(WS_METHODS.automationCancelRun, AutomationCancelRunInput),
-  tagRequestBody(WS_METHODS.automationMarkRunRead, AutomationMarkRunReadInput),
-  tagRequestBody(WS_METHODS.automationArchiveRun, AutomationArchiveRunInput),
-  tagRequestBody(WS_METHODS.automationResolveProposal, AutomationResolveProposalInput),
-  tagRequestBody(WS_METHODS.subscribeAutomationEvents, Schema.Struct({})),
 ]);
 
 export const WebSocketRequest = Schema.Struct({
@@ -467,7 +424,6 @@ export interface WsPushPayloadByChannel {
   readonly [WS_CHANNELS.serverConfigUpdated]: typeof ServerConfigUpdatedPayload.Type;
   readonly [WS_CHANNELS.serverProviderStatusesUpdated]: typeof ServerProviderStatusesUpdatedPayload.Type;
   readonly [WS_CHANNELS.serverSettingsUpdated]: typeof ServerSettingsUpdatedPayload.Type;
-  readonly [WS_CHANNELS.automationEvent]: typeof AutomationStreamEvent.Type;
   readonly [WS_CHANNELS.gitActionProgress]: typeof GitActionProgressEvent.Type;
   readonly [WS_CHANNELS.terminalEvent]: typeof TerminalEvent.Type;
   readonly [WS_CHANNELS.projectDevServerEvent]: typeof ProjectDevServerEvent.Type;
@@ -507,10 +463,6 @@ export const WsPushServerSettingsUpdated = makeWsPushSchema(
   WS_CHANNELS.serverSettingsUpdated,
   ServerSettingsUpdatedPayload,
 );
-export const WsPushAutomationEvent = makeWsPushSchema(
-  WS_CHANNELS.automationEvent,
-  AutomationStreamEvent,
-);
 export const WsPushGitActionProgress = makeWsPushSchema(
   WS_CHANNELS.gitActionProgress,
   GitActionProgressEvent,
@@ -540,7 +492,6 @@ export const WsPushChannelSchema = Schema.Literals([
   WS_CHANNELS.serverConfigUpdated,
   WS_CHANNELS.serverProviderStatusesUpdated,
   WS_CHANNELS.serverSettingsUpdated,
-  WS_CHANNELS.automationEvent,
   WS_CHANNELS.terminalEvent,
   WS_CHANNELS.projectDevServerEvent,
   ORCHESTRATION_WS_CHANNELS.domainEvent,
@@ -555,7 +506,6 @@ export const WsPush = Schema.Union([
   WsPushServerConfigUpdated,
   WsPushServerProviderStatusesUpdated,
   WsPushServerSettingsUpdated,
-  WsPushAutomationEvent,
   WsPushGitActionProgress,
   WsPushTerminalEvent,
   WsPushProjectDevServerEvent,

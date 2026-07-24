@@ -64,7 +64,7 @@ const SKILL_TOKEN_REGEX = /(^|\s)([$/])([a-zA-Z][a-zA-Z0-9_:-]*)(?=\s)/g;
 const DISPLAY_SKILL_TOKEN_REGEX = /(^|\s)([$/])([a-zA-Z][a-zA-Z0-9_:-]*)(?=\s|$)/g;
 const SLASH_COMMAND_CHIP_TOKEN_REGEX = /(^|\s)\/([a-zA-Z][a-zA-Z0-9_-]*)(?=\s)/i;
 
-const COMPOSER_SLASH_COMMAND_CHIP_NAMES = new Set<ComposerSlashCommand>(["automation"]);
+const COMPOSER_SLASH_COMMAND_CHIP_NAMES = new Set<ComposerSlashCommand>([]);
 
 // While typing (composer) a URL only becomes a chip once a delimiter follows it,
 // mirroring how skills/mentions wait for a trailing boundary. For read-only

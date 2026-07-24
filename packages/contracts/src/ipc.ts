@@ -28,26 +28,6 @@ import type {
   DatabaseUpsertConnectionInput,
 } from "./database";
 import type {
-  AutomationCancelRunInput,
-  AutomationCancelRunResult,
-  AutomationArchiveRunInput,
-  AutomationCreateInput,
-  AutomationDefinition,
-  AutomationDeleteInput,
-  AutomationGetMemoryInput,
-  AutomationListInput,
-  AutomationListResult,
-  AutomationMarkRunReadInput,
-  AutomationMemory,
-  AutomationResolveProposalInput,
-  AutomationResolveProposalResult,
-  AutomationRunActionResult,
-  AutomationRunNowInput,
-  AutomationRunNowResult,
-  AutomationStreamEvent,
-  AutomationUpdateInput,
-} from "./automation";
-import type {
   GitCheckoutInput,
   GitActionProgressEvent,
   GitCreateBranchInput,
@@ -140,8 +120,6 @@ import type { StudioListThreadOutputsInput, StudioListThreadOutputsResult } from
 import type {
   ServerConfig,
   ServerDiagnosticsResult,
-  ServerGenerateAutomationIntentInput,
-  ServerGenerateAutomationIntentResult,
   ServerGenerateThreadRecapInput,
   ServerGenerateThreadRecapResult,
   ServerGetEnvironmentResult,
@@ -701,9 +679,6 @@ export interface NativeApi {
     generateThreadRecap: (
       input: ServerGenerateThreadRecapInput,
     ) => Promise<ServerGenerateThreadRecapResult>;
-    generateAutomationIntent: (
-      input: ServerGenerateAutomationIntentInput,
-    ) => Promise<ServerGenerateAutomationIntentResult>;
     transcribeVoice: (
       input: ServerVoiceTranscriptionInput,
     ) => Promise<ServerVoiceTranscriptionResult>;
@@ -754,21 +729,6 @@ export interface NativeApi {
     onDomainEvent: (callback: (event: OrchestrationEvent) => void) => () => void;
     onShellEvent: (callback: (event: OrchestrationShellStreamItem) => void) => () => void;
     onThreadEvent: (callback: (event: OrchestrationThreadStreamItem) => void) => () => void;
-  };
-  automation: {
-    list: (input?: AutomationListInput) => Promise<AutomationListResult>;
-    getMemory: (input: AutomationGetMemoryInput) => Promise<AutomationMemory | null>;
-    create: (input: AutomationCreateInput) => Promise<AutomationDefinition>;
-    update: (input: AutomationUpdateInput) => Promise<AutomationDefinition>;
-    delete: (input: AutomationDeleteInput) => Promise<void>;
-    runNow: (input: AutomationRunNowInput) => Promise<AutomationRunNowResult>;
-    cancelRun: (input: AutomationCancelRunInput) => Promise<AutomationCancelRunResult>;
-    markRunRead: (input: AutomationMarkRunReadInput) => Promise<AutomationRunActionResult>;
-    archiveRun: (input: AutomationArchiveRunInput) => Promise<AutomationRunActionResult>;
-    resolveProposal: (
-      input: AutomationResolveProposalInput,
-    ) => Promise<AutomationResolveProposalResult>;
-    onEvent: (callback: (event: AutomationStreamEvent) => void) => () => void;
   };
   browser: BrowserControlMethods & {
     onCopyLink: (callback: (event: BrowserCopyLinkEvent) => void) => () => void;

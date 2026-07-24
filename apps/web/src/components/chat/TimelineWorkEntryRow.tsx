@@ -46,7 +46,6 @@ import {
   isCodexActivityStatusWorkEntry,
   isReasoningUpdateWorkEntry,
 } from "./agentActivity.logic";
-import { AutomationCreatedCard } from "./AutomationCreatedCard";
 import ChatMarkdown from "../ChatMarkdown";
 import { DiffStatLabel } from "./DiffStatLabel";
 import { type ExpandedImagePreview } from "./ExpandedImagePreview";
@@ -507,7 +506,6 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
   onOpenTurnDiff?: (turnId: TurnId, filePath?: string) => void;
   onOpenAgentActivity?: (activityId: string) => void;
   onOpenThread?: (threadId: ThreadId) => void;
-  onOpenAutomation?: (automationId: string) => void;
   subagentToolTraceByThreadId?: ReadonlyMap<string, SubagentToolTrace>;
 }) {
   const {
@@ -522,7 +520,6 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
     onOpenTurnDiff,
     onOpenAgentActivity,
     onOpenThread,
-    onOpenAutomation,
     subagentToolTraceByThreadId,
   } = props;
   const compact = density === "compact";
@@ -599,25 +596,6 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
         : EMPTY_FILE_DIFF_STATS,
     [workEntry],
   );
-
-  // A created-automation row renders as its own card instead of a tool-call line.
-  // Kept after the hooks above so the early return never changes hook order.
-  const automation = workEntry.automation;
-  if (automation) {
-    return (
-      <div className={cn(compact ? "py-0.5" : "py-1")}>
-        <AutomationCreatedCard
-          automationId={automation.id}
-          name={automation.name}
-          cadenceLabel={automation.cadenceLabel}
-          {...(automation.proposalState ? { proposalState: automation.proposalState } : {})}
-          textFontSizePx={textFontSizePx}
-          metaFontSizePx={chatMetaFontSizePx}
-          {...(onOpenAutomation ? { onOpen: () => onOpenAutomation(automation.id) } : {})}
-        />
-      </div>
-    );
-  }
 
   const readFilePath =
     opener !== null &&

@@ -32,7 +32,7 @@ export const DEFAULT_SYNARA_HOME = Effect.map(Effect.service(Path.Path), (path) 
 const MODE_ARGS = {
   // Product default: Electron shell + renderer HMR + desktop-spawned backend.
   dev: ["run", "dev", "--filter=@synara/desktop", "--filter=@synara/web", "--parallel"],
-  "dev:server": ["run", "dev", "--filter=@synara/cli"],
+  "dev:server": ["run", "dev", "--filter=@synara/backend"],
   // Vite renderer only (pair with an already-running backend/desktop).
   "dev:web": ["run", "dev", "--filter=@synara/web"],
   // Testing only: backend + browser UI, no Electron. Faster than full desktop.
@@ -41,7 +41,7 @@ const MODE_ARGS = {
     "dev",
     "--filter=@synara/contracts",
     "--filter=@synara/web",
-    "--filter=@synara/cli",
+    "--filter=@synara/backend",
     "--parallel",
   ],
   "dev:desktop": ["run", "dev", "--filter=@synara/desktop", "--filter=@synara/web", "--parallel"],

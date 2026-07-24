@@ -59,7 +59,6 @@ export interface WorkLogEntry {
   requestKind?: WorkLogRequestKind;
   subagents?: ReadonlyArray<WorkLogSubagent>;
   subagentAction?: WorkLogSubagentAction;
-  automation?: WorkLogAutomation;
   synaraThreadCreation?: WorkLogSynaraThreadCreation;
   // Source activity kind, kept so the timeline can pick a kind-specific icon
   // (e.g. user-input.requested -> question glyph) instead of the generic
@@ -68,15 +67,6 @@ export interface WorkLogEntry {
   // Provider-native event type carried through the activity payload (e.g.
   // "background_tasks_changed") so the timeline can pick a specific icon.
   nativeEventType?: string;
-}
-
-// Created-automation rows render as a dedicated card (icon + name + cadence + Open)
-// instead of a plain tool-call line, so carry just the fields that card needs.
-export interface WorkLogAutomation {
-  id: string;
-  name: string;
-  cadenceLabel: string;
-  proposalState?: "pending" | "accepted" | "dismissed";
 }
 
 export interface WorkLogSynaraCreatedThread {
@@ -270,8 +260,8 @@ function shouldKeepActivityForWorkLog(
     return true;
   }
 
-  // Created-automation milestones are thread-scoped and carry no provider turn id;
-  // keep them so the transcript card survives once the thread has turn-stamped messages.
+  // Historical automation.created milestones are thread-scoped (no provider turn id).
+  // Keep them as generic work-log rows for transcript history.
   if (activity.kind === "automation.created") {
     return true;
   }
@@ -325,31 +315,6 @@ function isPlanBoundaryToolActivity(activity: OrchestrationThreadActivity): bool
   );
 }
 
-function extractWorkLogAutomation(
-  payload: Record<string, unknown> | null,
-): WorkLogAutomation | null {
-  if (!payload) {
-    return null;
-  }
-  const id = typeof payload.automationId === "string" ? payload.automationId : null;
-  const name = typeof payload.automationName === "string" ? payload.automationName : null;
-  if (!id || !name) {
-    return null;
-  }
-  const cadenceLabel = typeof payload.cadenceLabel === "string" ? payload.cadenceLabel : "";
-  const proposalState =
-    payload.proposalState === "pending" ||
-    payload.proposalState === "accepted" ||
-    payload.proposalState === "dismissed"
-      ? payload.proposalState
-      : undefined;
-  return {
-    id,
-    name,
-    cadenceLabel,
-    ...(proposalState ? { proposalState } : {}),
-  };
-}
 
 function extractWorkLogSynaraThreadCreation(
   payload: Record<string, unknown> | null,
@@ -480,12 +445,6 @@ function toDerivedWorkLogEntry(activity: OrchestrationThreadActivity): DerivedWo
   const subagentAction = extractCollabAction(payload, subagents);
   if (subagentAction) {
     entry.subagentAction = subagentAction;
-  }
-  if (activity.kind === "automation.created") {
-    const automation = extractWorkLogAutomation(payload);
-    if (automation) {
-      entry.automation = automation;
-    }
   }
   if (activity.kind === "synara.threads.created") {
     const synaraThreadCreation = extractWorkLogSynaraThreadCreation(payload);
