@@ -42,6 +42,21 @@ import {
   NotesRenameInput,
   NotesWriteInput,
 } from "./notes";
+import {
+  DatabaseApplyCellEditsInput,
+  DatabaseApplyCellEditsResult,
+  DatabaseConnection,
+  DatabaseDeleteConnectionInput,
+  DatabaseInspectSchemaInput,
+  DatabaseInspectSchemaResult,
+  DatabaseListConnectionsInput,
+  DatabaseListConnectionsResult,
+  DatabaseQueryInput,
+  DatabaseQueryResult,
+  DatabaseTestConnectionInput,
+  DatabaseTestConnectionResult,
+  DatabaseUpsertConnectionInput,
+} from "./database";
 import { StudioListThreadOutputsInput, StudioListThreadOutputsResult } from "./studio";
 import {
   GitCheckoutInput,
@@ -1008,6 +1023,48 @@ export const WsSubscribeAutomationEventsRpc = Rpc.make(WS_METHODS.subscribeAutom
   stream: true,
 });
 
+export const WsDatabaseListConnectionsRpc = Rpc.make(WS_METHODS.databaseListConnections, {
+  payload: DatabaseListConnectionsInput,
+  success: DatabaseListConnectionsResult,
+  error: WsRpcError,
+});
+
+export const WsDatabaseUpsertConnectionRpc = Rpc.make(WS_METHODS.databaseUpsertConnection, {
+  payload: DatabaseUpsertConnectionInput,
+  success: DatabaseConnection,
+  error: WsRpcError,
+});
+
+export const WsDatabaseDeleteConnectionRpc = Rpc.make(WS_METHODS.databaseDeleteConnection, {
+  payload: DatabaseDeleteConnectionInput,
+  success: Schema.Void,
+  error: WsRpcError,
+});
+
+export const WsDatabaseTestConnectionRpc = Rpc.make(WS_METHODS.databaseTestConnection, {
+  payload: DatabaseTestConnectionInput,
+  success: DatabaseTestConnectionResult,
+  error: WsRpcError,
+});
+
+export const WsDatabaseQueryRpc = Rpc.make(WS_METHODS.databaseQuery, {
+  payload: DatabaseQueryInput,
+  success: DatabaseQueryResult,
+  error: WsRpcError,
+});
+
+export const WsDatabaseApplyCellEditsRpc = Rpc.make(WS_METHODS.databaseApplyCellEdits, {
+  payload: DatabaseApplyCellEditsInput,
+  success: DatabaseApplyCellEditsResult,
+  error: WsRpcError,
+});
+
+export const WsDatabaseInspectSchemaRpc = Rpc.make(WS_METHODS.databaseInspectSchema, {
+  payload: DatabaseInspectSchemaInput,
+  success: DatabaseInspectSchemaResult,
+  error: WsRpcError,
+});
+
 export const WsBootstrapRpcGroup = RpcGroup.make(WsBootstrapNegotiateRpc);
 
 export const WsFeatureRpcGroup = RpcGroup.make(
@@ -1130,6 +1187,13 @@ export const WsFeatureRpcGroup = RpcGroup.make(
   WsAutomationArchiveRunRpc,
   WsAutomationResolveProposalRpc,
   WsSubscribeAutomationEventsRpc,
+  WsDatabaseListConnectionsRpc,
+  WsDatabaseUpsertConnectionRpc,
+  WsDatabaseDeleteConnectionRpc,
+  WsDatabaseTestConnectionRpc,
+  WsDatabaseQueryRpc,
+  WsDatabaseApplyCellEditsRpc,
+  WsDatabaseInspectSchemaRpc,
 );
 
 /** @deprecated Use WsFeatureRpcGroup. Bootstrap is intentionally a separate endpoint/group. */

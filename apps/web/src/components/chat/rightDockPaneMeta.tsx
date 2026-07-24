@@ -7,6 +7,7 @@ import type { ReactNode } from "react";
 
 import type { LucideIcon } from "~/lib/icons";
 import {
+  DatabaseIcon,
   DiffIcon,
   FileIcon,
   FoldersIcon,
@@ -39,6 +40,7 @@ export const RIGHT_DOCK_PANE_META: Record<RightDockPaneKind, RightDockPaneMeta> 
   sidechat: { label: "Side", Icon: MessageCircleIcon },
   git: { label: "Git", Icon: GitCommitIcon },
   pullRequest: { label: "Pull request", Icon: GitPullRequestIcon },
+  database: { label: "Database", Icon: DatabaseIcon },
 };
 
 // Neutral fallback for any pane kind we no longer recognize (e.g. stale

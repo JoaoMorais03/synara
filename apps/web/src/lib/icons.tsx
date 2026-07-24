@@ -26,6 +26,7 @@ import {
   IconChevronUp,
   IconCircleCheck,
   IconColumns2,
+  IconDatabase,
   IconDots,
   IconDownload,
   IconExternalLink,
@@ -142,6 +143,7 @@ export const ChangesIcon = centralIconWrapper("changes");
 export const CopyIcon = centralIconWrapper("square-behind-square-6");
 export const LinkIcon = centralIconWrapper("chain-link-3");
 export const DiffIcon = centralIconWrapper("difference-modified");
+export const DatabaseIcon = adaptIcon(IconDatabase);
 export const DownloadIcon = adaptIcon(IconDownload);
 // The clock doubles as the automation glyph everywhere it appears (meta chip,
 // Automations nav, slash command, created card, environment section), so it is

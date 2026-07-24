@@ -25,4 +25,5 @@ export * from "./project";
 export * from "./studio";
 export * from "./filesystem";
 export * from "./notes";
+export * from "./database";
 export * from "./rpc";

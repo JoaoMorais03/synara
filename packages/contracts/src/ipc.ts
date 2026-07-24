@@ -20,6 +20,21 @@ import type {
   ExternalMcpRevokeIntegrationInput,
 } from "./externalMcp";
 import type {
+  DatabaseApplyCellEditsInput,
+  DatabaseApplyCellEditsResult,
+  DatabaseConnection,
+  DatabaseDeleteConnectionInput,
+  DatabaseInspectSchemaInput,
+  DatabaseInspectSchemaResult,
+  DatabaseListConnectionsInput,
+  DatabaseListConnectionsResult,
+  DatabaseQueryInput,
+  DatabaseQueryResult,
+  DatabaseTestConnectionInput,
+  DatabaseTestConnectionResult,
+  DatabaseUpsertConnectionInput,
+} from "./database";
+import type {
   AutomationCancelRunInput,
   AutomationCancelRunResult,
   AutomationArchiveRunInput,
@@ -644,6 +659,15 @@ export interface NativeApi {
     action: (input: PullRequestActionInput) => Promise<PullRequestActionResult>;
     comment: (input: PullRequestCommentInput) => Promise<PullRequestActionResult>;
     setPinned: (input: PullRequestSetPinnedInput) => Promise<PullRequestSetPinnedResult>;
+  };
+  database: {
+    listConnections: (input: DatabaseListConnectionsInput) => Promise<DatabaseListConnectionsResult>;
+    upsertConnection: (input: DatabaseUpsertConnectionInput) => Promise<DatabaseConnection>;
+    deleteConnection: (input: DatabaseDeleteConnectionInput) => Promise<void>;
+    testConnection: (input: DatabaseTestConnectionInput) => Promise<DatabaseTestConnectionResult>;
+    query: (input: DatabaseQueryInput) => Promise<DatabaseQueryResult>;
+    applyCellEdits: (input: DatabaseApplyCellEditsInput) => Promise<DatabaseApplyCellEditsResult>;
+    inspectSchema: (input: DatabaseInspectSchemaInput) => Promise<DatabaseInspectSchemaResult>;
   };
   contextMenu: {
     show: <T extends string>(

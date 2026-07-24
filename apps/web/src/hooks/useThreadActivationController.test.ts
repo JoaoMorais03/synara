@@ -52,6 +52,7 @@ function makeControllerInput(
   navigate: ReturnType<typeof vi.fn>;
   clearSelection: ReturnType<typeof vi.fn>;
   openChatThreadPage: ReturnType<typeof vi.fn>;
+  openDatabaseThreadPage: ReturnType<typeof vi.fn>;
   openSidechatSplit: ReturnType<typeof vi.fn>;
   openTerminalThreadPage: ReturnType<typeof vi.fn>;
   prewarmThreadDetailForIntent: ReturnType<typeof vi.fn>;
@@ -65,6 +66,7 @@ function makeControllerInput(
     clearSelection: vi.fn(),
     navigate: vi.fn(),
     openChatThreadPage: vi.fn(),
+    openDatabaseThreadPage: vi.fn(),
     openSidechatSplit: vi.fn(() => "split-sidechat"),
     openTerminalThreadPage: vi.fn(),
     prewarmThreadDetailForIntent: vi.fn(),
@@ -87,6 +89,7 @@ function makeControllerInput(
     navigate: ReturnType<typeof vi.fn>;
     clearSelection: ReturnType<typeof vi.fn>;
     openChatThreadPage: ReturnType<typeof vi.fn>;
+    openDatabaseThreadPage: ReturnType<typeof vi.fn>;
     openSidechatSplit: ReturnType<typeof vi.fn>;
     openTerminalThreadPage: ReturnType<typeof vi.fn>;
     prewarmThreadDetailForIntent: ReturnType<typeof vi.fn>;
@@ -273,6 +276,22 @@ describe("activateThreadFromSidebarIntent", () => {
     expect(input.openTerminalThreadPage).toHaveBeenCalledWith(THREAD_C);
     expect(input.openChatThreadPage).not.toHaveBeenCalled();
     expect(getFirstNavigateArgs(input).params).toEqual({ threadId: THREAD_C });
+  });
+
+  it("preserves database entry point when opening a single thread", () => {
+    const terminalStateByThreadId = {
+      [THREAD_C]: { entryPoint: "database" },
+    } as unknown as ThreadActivationControllerInput["terminalStateByThreadId"];
+    const input = makeControllerInput({
+      routeThreadId: THREAD_A,
+      terminalStateByThreadId,
+    });
+
+    activateThreadFromSidebarIntent(input, THREAD_C);
+
+    expect(input.openDatabaseThreadPage).toHaveBeenCalledWith(THREAD_C);
+    expect(input.openChatThreadPage).not.toHaveBeenCalled();
+    expect(input.openTerminalThreadPage).not.toHaveBeenCalled();
   });
 
   it("opens sidechat rows beside their source thread when no persisted split exists", () => {

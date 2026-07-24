@@ -84,6 +84,18 @@ describe("terminalStateStore actions", () => {
     expect(terminalState.workspaceActiveTab).toBe("terminal");
   });
 
+  it("opens database-first threads without a terminal workspace", () => {
+    const store = useTerminalStateStore.getState();
+    store.openDatabaseThreadPage(THREAD_ID);
+
+    const terminalState = selectThreadTerminalState(
+      useTerminalStateStore.getState().terminalStateByThreadId,
+      THREAD_ID,
+    );
+    expect(terminalState.entryPoint).toBe("database");
+    expect(terminalState.terminalOpen).toBe(false);
+  });
+
   it("opens and splits terminals into the active group", () => {
     const store = useTerminalStateStore.getState();
     store.setTerminalOpen(THREAD_ID, true);

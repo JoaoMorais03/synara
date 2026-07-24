@@ -22,6 +22,7 @@ describe("RIGHT_DOCK_PANE_KINDS (single source of truth)", () => {
       "sidechat",
       "git",
       "pullRequest",
+      "database",
     ]);
   });
 
@@ -43,6 +44,7 @@ describe("isRightDockPaneKind", () => {
       "sidechat",
       "git",
       "pullRequest",
+      "database",
     ]) {
       expect(isRightDockPaneKind(kind)).toBe(true);
     }
@@ -53,6 +55,22 @@ describe("isRightDockPaneKind", () => {
     expect(isRightDockPaneKind(undefined)).toBe(false);
     expect(isRightDockPaneKind(null)).toBe(false);
     expect(isRightDockPaneKind(42)).toBe(false);
+  });
+});
+
+describe("database pane", () => {
+  it("is a singleton that reuses the same pane on reopen", () => {
+    const first = openPaneInState(createDefaultRightDockState(), {
+      paneId: "db-1",
+      kind: "database",
+    });
+    const reopened = openPaneInState(first, {
+      paneId: "db-2",
+      kind: "database",
+    });
+    expect(reopened.panes).toHaveLength(1);
+    expect(reopened.activePaneId).toBe("db-1");
+    expect(reopened.open).toBe(true);
   });
 });
 

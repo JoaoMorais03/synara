@@ -31,6 +31,7 @@ import { Headers, HttpRouter, HttpServerRequest, HttpServerResponse } from "effe
 import { RpcMiddleware, RpcSchema, RpcSerialization, RpcServer } from "effect/unstable/rpc";
 
 import { AutomationService } from "./automation/Services/AutomationService";
+import { getDatabaseConnectionStore } from "./database/databaseConnections";
 import { authErrorResponse, makeEffectAuthRequest } from "./auth/effectHttp";
 import {
   ServerAuth,
@@ -325,6 +326,7 @@ const makeWsRpcHandlersLayer = () =>
       const workspaceEntries = yield* WorkspaceEntries;
       const workspaceFileSystem = yield* WorkspaceFileSystem;
       const threadDiagnostics = yield* ThreadDiagnosticsQuery;
+      const databaseConnections = yield* getDatabaseConnectionStore;
       const streamAdmission = yield* makeWsStreamAdmission({
         recordRejection: (incident) =>
           threadDiagnostics
@@ -1614,6 +1616,20 @@ const makeWsRpcHandlersLayer = () =>
           rpcEffect(providerDiscoveryService.listModels(input), "Failed to list models"),
         [WS_METHODS.providerListAgents]: (input) =>
           rpcEffect(providerDiscoveryService.listAgents(input), "Failed to list agents"),
+        [WS_METHODS.databaseListConnections]: (input) =>
+          rpcEffect(databaseConnections.list(input.projectId), "Failed to list database connections"),
+        [WS_METHODS.databaseUpsertConnection]: (input) =>
+          rpcEffect(databaseConnections.upsert(input), "Failed to save database connection"),
+        [WS_METHODS.databaseDeleteConnection]: (input) =>
+          rpcEffect(databaseConnections.remove(input), "Failed to delete database connection"),
+        [WS_METHODS.databaseTestConnection]: (input) =>
+          rpcEffect(databaseConnections.test(input), "Failed to test database connection"),
+        [WS_METHODS.databaseQuery]: (input) =>
+          rpcEffect(databaseConnections.query(input), "Failed to run database query"),
+        [WS_METHODS.databaseApplyCellEdits]: (input) =>
+          rpcEffect(databaseConnections.applyCellEdits(input), "Failed to push cell edits"),
+        [WS_METHODS.databaseInspectSchema]: (input) =>
+          rpcEffect(databaseConnections.inspectSchema(input), "Failed to inspect database schema"),
         [WS_METHODS.automationList]: (input) =>
           rpcEffect(automationService.list(input), "Failed to list automations"),
         [WS_METHODS.automationGetMemory]: ({ automationId }) =>

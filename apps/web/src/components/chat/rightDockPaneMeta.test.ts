@@ -20,4 +20,12 @@ describe("RIGHT_DOCK_ADD_MENU_KINDS", () => {
   it("labels the explorer pane", () => {
     expect(getRightDockPaneMeta("explorer").label).toBe("Explorer");
   });
+
+  it("labels the database pane", () => {
+    expect(getRightDockPaneMeta("database").label).toBe("Database");
+  });
+
+  it("offers the database pane in the add menu", () => {
+    expect(RIGHT_DOCK_ADD_MENU_KINDS).toContain("database");
+  });
 });

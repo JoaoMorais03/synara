@@ -13,8 +13,9 @@ import { resolveSubagentPresentationForThread } from "../lib/subagentPresentatio
 import { resolveThreadHandoffBadgeLabel } from "../lib/threadHandoff";
 import { SIDEBAR_ROW_LABEL_TEXT_CLASS_NAME } from "../sidebarRowStyles";
 import type { SidebarThreadSummary } from "../types";
-import { TerminalIcon } from "../lib/icons";
+import { DatabaseIcon, TerminalIcon } from "../lib/icons";
 import { cn } from "../lib/utils";
+import type { ThreadPrimarySurface } from "../types";
 import { ProviderIcon } from "./ProviderIcon";
 import { SidebarGlyph } from "./sidebarGlyphs";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
@@ -166,6 +167,7 @@ function SidebarSubagentLabel({
 export function SidebarThreadRowContent({
   thread,
   terminalEntryPoint,
+  primarySurface = "chat",
   terminalStatus,
   terminalCount,
   isActive,
@@ -175,7 +177,9 @@ export function SidebarThreadRowContent({
   suffix,
 }: {
   thread: SidebarThreadSummary;
-  terminalEntryPoint: boolean;
+  /** @deprecated Prefer primarySurface — kept for older call sites. */
+  terminalEntryPoint?: boolean;
+  primarySurface?: ThreadPrimarySurface;
   terminalStatus: SidebarThreadTerminalStatus | null;
   terminalCount: number;
   isActive: boolean;
@@ -184,6 +188,12 @@ export function SidebarThreadRowContent({
   pendingStatusColorClass?: string | null | undefined;
   suffix?: ReactNode;
 }) {
+  const resolvedPrimarySurface: ThreadPrimarySurface =
+    primarySurface !== "chat"
+      ? primarySurface
+      : terminalEntryPoint
+        ? "terminal"
+        : "chat";
   const isSubagentThread = Boolean(thread.parentThreadId);
   const subagentPresentation =
     variant === "standard" && isSubagentThread
@@ -215,8 +225,10 @@ export function SidebarThreadRowContent({
             style={{ backgroundColor: subagentPresentation?.accentColor }}
           />
         </span>
-      ) : terminalEntryPoint ? (
+      ) : resolvedPrimarySurface === "terminal" ? (
         <SidebarGlyph icon={TerminalIcon} variant="chrome" />
+      ) : resolvedPrimarySurface === "database" ? (
+        <SidebarGlyph icon={DatabaseIcon} variant="chrome" />
       ) : showThreadProviderAvatar ? (
         <ProviderAvatarWithTerminal
           thread={thread}

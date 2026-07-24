@@ -46,6 +46,7 @@ export const COMPOSER_DRAFT_STORAGE_KEY = "synara:composer-drafts:v1";
 export const COMPOSER_DRAFT_STORAGE_VERSION = 5;
 export type DraftThreadEnvMode = "local" | "worktree";
 const TERMINAL_DRAFT_THREAD_MAPPING_SUFFIX = "::terminal";
+const DATABASE_DRAFT_THREAD_MAPPING_SUFFIX = "::database";
 
 const PersistedComposerAppSnapSource = Schema.Struct({
   kind: Schema.Literal("appsnap"),
@@ -360,21 +361,33 @@ export function projectDraftThreadMappingKey(
   projectId: ProjectId,
   entryPoint: ThreadPrimarySurface = "chat",
 ): string {
-  return entryPoint === "terminal"
-    ? `${projectId}${TERMINAL_DRAFT_THREAD_MAPPING_SUFFIX}`
-    : projectId;
+  if (entryPoint === "terminal") {
+    return `${projectId}${TERMINAL_DRAFT_THREAD_MAPPING_SUFFIX}`;
+  }
+  if (entryPoint === "database") {
+    return `${projectId}${DATABASE_DRAFT_THREAD_MAPPING_SUFFIX}`;
+  }
+  return projectId;
 }
 
 export function projectDraftThreadEntryPointFromKey(key: string): ThreadPrimarySurface {
-  return key.endsWith(TERMINAL_DRAFT_THREAD_MAPPING_SUFFIX) ? "terminal" : "chat";
+  if (key.endsWith(TERMINAL_DRAFT_THREAD_MAPPING_SUFFIX)) {
+    return "terminal";
+  }
+  if (key.endsWith(DATABASE_DRAFT_THREAD_MAPPING_SUFFIX)) {
+    return "database";
+  }
+  return "chat";
 }
 
 export function projectIdFromDraftThreadMappingKey(key: string): ProjectId {
-  return (
-    key.endsWith(TERMINAL_DRAFT_THREAD_MAPPING_SUFFIX)
-      ? key.slice(0, -TERMINAL_DRAFT_THREAD_MAPPING_SUFFIX.length)
-      : key
-  ) as ProjectId;
+  if (key.endsWith(TERMINAL_DRAFT_THREAD_MAPPING_SUFFIX)) {
+    return key.slice(0, -TERMINAL_DRAFT_THREAD_MAPPING_SUFFIX.length) as ProjectId;
+  }
+  if (key.endsWith(DATABASE_DRAFT_THREAD_MAPPING_SUFFIX)) {
+    return key.slice(0, -DATABASE_DRAFT_THREAD_MAPPING_SUFFIX.length) as ProjectId;
+  }
+  return key as ProjectId;
 }
 
 function resolveDraftThreadCreatedAt(input: {
@@ -800,7 +813,7 @@ export function normalizeDraftThreadEntryPoint(
   value: unknown,
   fallback: ThreadPrimarySurface = "chat",
 ) {
-  return value === "terminal" || value === "chat" ? value : fallback;
+  return value === "terminal" || value === "database" || value === "chat" ? value : fallback;
 }
 
 const EMPTY_IMAGES: ComposerImageAttachment[] = [];

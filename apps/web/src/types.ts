@@ -44,7 +44,7 @@ export const MAX_TERMINALS_PER_GROUP = 6;
 export type ThreadTerminalPresentationMode = "drawer" | "workspace";
 export type ThreadTerminalWorkspaceTab = "terminal" | "chat";
 export type ThreadTerminalWorkspaceLayout = "both" | "terminal-only";
-export type ThreadPrimarySurface = "chat" | "terminal";
+export type ThreadPrimarySurface = "chat" | "terminal" | "database";
 export type ProjectScript = ContractProjectScript;
 
 export type ThreadTerminalSplitDirection = "horizontal" | "vertical";

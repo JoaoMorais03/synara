@@ -48,6 +48,7 @@ export function useHandleNewThread() {
     useFocusedChatContext();
   const openChatThreadPage = useTerminalStateStore((store) => store.openChatThreadPage);
   const openTerminalThreadPage = useTerminalStateStore((store) => store.openTerminalThreadPage);
+  const openDatabaseThreadPage = useTerminalStateStore((store) => store.openDatabaseThreadPage);
   const clearTerminalState = useTerminalStateStore((store) => store.clearTerminalState);
   const markTemporaryThread = useTemporaryThreadStore((store) => store.markTemporaryThread);
   const clearTemporaryThread = useTemporaryThreadStore((store) => store.clearTemporaryThread);
@@ -94,6 +95,10 @@ export function useHandleNewThread() {
     const activateThreadEntryPoint = (threadId: ThreadId) => {
       if (entryPoint === "terminal") {
         openTerminalThreadPage(threadId, { terminalOnly: true });
+        return;
+      }
+      if (entryPoint === "database") {
+        openDatabaseThreadPage(threadId);
         return;
       }
       openChatThreadPage(threadId);
@@ -155,11 +160,12 @@ export function useHandleNewThread() {
         projectDefaultModelSelection,
         projectId,
       });
-    // Terminal-first threads need a real orchestration thread immediately so
+    // Terminal/database-first threads need a real orchestration thread immediately so
     // the sidebar can render them as durable rows instead of draft-only routes.
-    const createTerminalThread = async (
+    const promotePrimarySurfaceThread = async (
       threadId: ThreadId,
       creationState: ReturnType<typeof resolveCreationState>,
+      title: string,
     ): Promise<void> => {
       const api = readNativeApi();
       if (!api) {
@@ -171,7 +177,7 @@ export function useHandleNewThread() {
           commandId: newCommandId(),
           threadId,
           projectId,
-          title: "New terminal",
+          title,
           modelSelection: creationState.modelSelection,
           runtimeMode: creationState.runtimeMode,
           interactionMode: creationState.interactionMode,
@@ -184,6 +190,33 @@ export function useHandleNewThread() {
         api,
       );
     };
+    const createTerminalThread = (
+      threadId: ThreadId,
+      creationState: ReturnType<typeof resolveCreationState>,
+    ) => promotePrimarySurfaceThread(threadId, creationState, "New terminal");
+    const createDatabaseThread = (
+      threadId: ThreadId,
+      creationState: ReturnType<typeof resolveCreationState>,
+    ) => promotePrimarySurfaceThread(threadId, creationState, "New database");
+    const promoteEntryPointThread = async (
+      threadId: ThreadId,
+      draftThread: DraftThreadState | null,
+      creationOptions: NewThreadOptions | undefined,
+    ): Promise<void> => {
+      if (entryPoint === "terminal") {
+        await createTerminalThread(
+          threadId,
+          resolveCreationState(threadId, draftThread, creationOptions),
+        );
+        return;
+      }
+      if (entryPoint === "database") {
+        await createDatabaseThread(
+          threadId,
+          resolveCreationState(threadId, draftThread, creationOptions),
+        );
+      }
+    };
     if (bootstrapPlan.kind === "stored") {
       return (async (): Promise<ThreadId> => {
         if (wantsTemporaryThread) {
@@ -192,12 +225,13 @@ export function useHandleNewThread() {
         const preservedComposerDraft =
           useComposerDraftStore.getState().draftsByThreadId[bootstrapPlan.threadId] ?? null;
         let resolvedStoredDraftThread: DraftThreadState | null = bootstrapPlan.draftThread;
-        const shouldPreserveStoredTerminalContext =
-          entryPoint === "terminal" && bootstrapPlan.draftThread.entryPoint === "terminal";
-        const draftContextPatch = shouldPreserveStoredTerminalContext
+        const shouldPreserveStoredSurfaceContext =
+          (entryPoint === "terminal" || entryPoint === "database") &&
+          bootstrapPlan.draftThread.entryPoint === entryPoint;
+        const draftContextPatch = shouldPreserveStoredSurfaceContext
           ? null
           : buildDraftThreadContextPatch(entryPoint, options);
-        const creationOptions = shouldPreserveStoredTerminalContext ? undefined : options;
+        const creationOptions = shouldPreserveStoredSurfaceContext ? undefined : options;
         if (draftContextPatch) {
           setDraftThreadContext(bootstrapPlan.threadId, draftContextPatch);
           resolvedStoredDraftThread = getDraftThread(bootstrapPlan.threadId);
@@ -207,16 +241,11 @@ export function useHandleNewThread() {
         restoreComposerDraft(bootstrapPlan.threadId, preservedComposerDraft);
         activateThreadEntryPoint(bootstrapPlan.threadId);
         if (focusedThreadId === bootstrapPlan.threadId) {
-          if (entryPoint === "terminal") {
-            await createTerminalThread(
-              bootstrapPlan.threadId,
-              resolveCreationState(
-                bootstrapPlan.threadId,
-                resolvedStoredDraftThread,
-                creationOptions,
-              ),
-            );
-          }
+          await promoteEntryPointThread(
+            bootstrapPlan.threadId,
+            resolvedStoredDraftThread,
+            creationOptions,
+          );
           return bootstrapPlan.threadId;
         }
         await navigate({
@@ -225,16 +254,11 @@ export function useHandleNewThread() {
           ...(navigation?.search ? { search: navigation.search } : {}),
         });
         restoreComposerDraft(bootstrapPlan.threadId, preservedComposerDraft);
-        if (entryPoint === "terminal") {
-          await createTerminalThread(
-            bootstrapPlan.threadId,
-            resolveCreationState(
-              bootstrapPlan.threadId,
-              resolvedStoredDraftThread,
-              creationOptions,
-            ),
-          );
-        }
+        await promoteEntryPointThread(
+          bootstrapPlan.threadId,
+          resolvedStoredDraftThread,
+          creationOptions,
+        );
         return bootstrapPlan.threadId;
       })();
     }
@@ -256,12 +280,7 @@ export function useHandleNewThread() {
         setProjectDraftThreadId(projectId, bootstrapPlan.threadId, { entryPoint });
         restoreComposerDraft(bootstrapPlan.threadId, preservedComposerDraft);
         activateThreadEntryPoint(bootstrapPlan.threadId);
-        if (entryPoint === "terminal") {
-          await createTerminalThread(
-            bootstrapPlan.threadId,
-            resolveCreationState(bootstrapPlan.threadId, resolvedActiveDraftThread, options),
-          );
-        }
+        await promoteEntryPointThread(bootstrapPlan.threadId, resolvedActiveDraftThread, options);
         return bootstrapPlan.threadId;
       })();
     }
@@ -310,12 +329,7 @@ export function useHandleNewThread() {
       if (!committed) {
         return null;
       }
-      if (entryPoint === "terminal") {
-        await createTerminalThread(
-          threadId,
-          resolveCreationState(threadId, getDraftThread(threadId), options),
-        );
-      }
+      await promoteEntryPointThread(threadId, getDraftThread(threadId), options);
       return threadId;
     });
   };

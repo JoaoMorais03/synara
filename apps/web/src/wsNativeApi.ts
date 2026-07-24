@@ -475,6 +475,15 @@ export function createWsNativeApi(): NativeApi {
       delete: (input) => transport.request(WS_METHODS.notesDelete, input),
       rename: (input) => transport.request(WS_METHODS.notesRename, input),
     },
+    database: {
+      listConnections: (input) => transport.request(WS_METHODS.databaseListConnections, input),
+      upsertConnection: (input) => transport.request(WS_METHODS.databaseUpsertConnection, input),
+      deleteConnection: (input) => transport.request(WS_METHODS.databaseDeleteConnection, input),
+      testConnection: (input) => transport.request(WS_METHODS.databaseTestConnection, input),
+      query: (input) => transport.request(WS_METHODS.databaseQuery, input),
+      applyCellEdits: (input) => transport.request(WS_METHODS.databaseApplyCellEdits, input),
+      inspectSchema: (input) => transport.request(WS_METHODS.databaseInspectSchema, input),
+    },
     studio: {
       listThreadOutputs: (input) => transport.request(WS_METHODS.studioListThreadOutputs, input),
     },

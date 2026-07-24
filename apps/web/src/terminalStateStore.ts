@@ -429,7 +429,12 @@ function normalizeThreadTerminalState(state: ThreadTerminalState): ThreadTermina
   );
 
   const normalized: ThreadTerminalState = {
-    entryPoint: state.entryPoint === "terminal" ? "terminal" : "chat",
+    entryPoint:
+      state.entryPoint === "terminal"
+        ? "terminal"
+        : state.entryPoint === "database"
+          ? "database"
+          : "chat",
     terminalOpen: state.terminalOpen,
     presentationMode: state.presentationMode === "workspace" ? "workspace" : "drawer",
     workspaceLayout: state.workspaceLayout === "terminal-only" ? "terminal-only" : "both",
@@ -619,6 +624,22 @@ function openThreadChatPage(state: ThreadTerminalState): ThreadTerminalState {
     ...normalized,
     entryPoint: "chat",
     ...nextWorkspaceState,
+  };
+}
+
+function openThreadDatabasePage(state: ThreadTerminalState): ThreadTerminalState {
+  const normalized = normalizeThreadTerminalState(state);
+  if (normalized.entryPoint === "database" && !normalized.terminalOpen) {
+    return normalized;
+  }
+  // Database threads are project-scoped manager surfaces, not PTY workspaces.
+  return {
+    ...normalized,
+    entryPoint: "database",
+    terminalOpen: false,
+    presentationMode: "drawer",
+    workspaceLayout: "both",
+    workspaceActiveTab: "chat",
   };
 }
 
@@ -1236,6 +1257,7 @@ interface TerminalStateStoreState {
   terminalStateByThreadId: Record<ThreadId, ThreadTerminalState>;
   openChatThreadPage: (threadId: ThreadId) => void;
   openTerminalThreadPage: (threadId: ThreadId, options?: { terminalOnly?: boolean }) => void;
+  openDatabaseThreadPage: (threadId: ThreadId) => void;
   setTerminalOpen: (threadId: ThreadId, open: boolean) => void;
   setTerminalPresentationMode: (threadId: ThreadId, mode: ThreadTerminalPresentationMode) => void;
   setTerminalWorkspaceLayout: (threadId: ThreadId, layout: ThreadTerminalWorkspaceLayout) => void;
@@ -1335,6 +1357,8 @@ export const useTerminalStateStore = create<TerminalStateStoreState>()(
           updateTerminal(threadId, (state) => openThreadChatPage(state)),
         openTerminalThreadPage: (threadId, options) =>
           updateTerminal(threadId, (state) => openThreadTerminalPage(state, options)),
+        openDatabaseThreadPage: (threadId) =>
+          updateTerminal(threadId, (state) => openThreadDatabasePage(state)),
         setTerminalOpen: (threadId, open) =>
           updateTerminal(threadId, (state) => setThreadTerminalOpen(state, open)),
         setTerminalPresentationMode: (threadId, mode) =>

@@ -60,7 +60,7 @@ import {
 import { DEFAULT_INTERACTION_MODE, DEFAULT_RUNTIME_MODE } from "./types";
 
 const DraftThreadEnvModeSchema = Schema.Literals(["local", "worktree"]);
-const DraftThreadEntryPointSchema = Schema.Literals(["chat", "terminal"]);
+const DraftThreadEntryPointSchema = Schema.Literals(["chat", "terminal", "database"]);
 
 const PersistedTerminalContextDraft = Schema.Struct({
   id: Schema.String,

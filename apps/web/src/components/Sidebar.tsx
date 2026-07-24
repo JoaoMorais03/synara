@@ -19,6 +19,7 @@ import {
   StopFilledIcon,
   TemporaryThreadIcon,
   TerminalIcon,
+  DatabaseIcon,
   Trash2,
   TriangleAlertIcon,
   WorktreeIcon,
@@ -1238,6 +1239,7 @@ export default function Sidebar() {
   const clearTerminalState = useTerminalStateStore((state) => state.clearTerminalState);
   const openChatThreadPage = useTerminalStateStore((state) => state.openChatThreadPage);
   const openTerminalThreadPage = useTerminalStateStore((state) => state.openTerminalThreadPage);
+  const openDatabaseThreadPage = useTerminalStateStore((state) => state.openDatabaseThreadPage);
   const clearProjectDraftThreads = useComposerDraftStore((store) => store.clearProjectDraftThreads);
   const draftThreadsByThreadId = useComposerDraftStore((store) => store.draftThreadsByThreadId);
   const temporaryThreadIds = useTemporaryThreadStore((store) => store.temporaryThreadIds);
@@ -3123,6 +3125,7 @@ export default function Sidebar() {
     clearSelection,
     navigate,
     openChatThreadPage,
+    openDatabaseThreadPage,
     openSidechatSplit: ({ sourceThreadId, ownerProjectId, sidechatThreadId }) =>
       createSplitViewFromDrop({
         sourceThreadId,
@@ -4289,6 +4292,7 @@ export default function Sidebar() {
           >
             <SidebarThreadRowContent
               thread={thread}
+              primarySurface={threadEntryPoint}
               terminalEntryPoint={threadEntryPoint === "terminal"}
               terminalStatus={terminalStatus}
               terminalCount={terminalCount}
@@ -4484,6 +4488,7 @@ export default function Sidebar() {
           >
             <SidebarThreadRowContent
               thread={thread}
+              primarySurface={threadEntryPoint}
               terminalEntryPoint={threadEntryPoint === "terminal"}
               terminalStatus={terminalStatus}
               terminalCount={terminalCount}
@@ -4708,6 +4713,25 @@ export default function Sidebar() {
                   void navigate({
                     to: "/pull-requests",
                     search: { involvement: "all", state: "open", projectId: project.id },
+                  });
+                }}
+              />
+              <SidebarIconButton
+                icon={DatabaseIcon}
+                label={`Create new database thread in ${project.name}`}
+                tooltip="New database"
+                tooltipSide="top"
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  // Mirrors terminal: promotes a durable project row ("New database") and
+                  // opens the manager as that thread's primary surface. Dock Database stays
+                  // independent and never navigates away from chat.
+                  void handleNewThread(project.id, {
+                    envMode: resolveSidebarNewThreadEnvMode({
+                      defaultEnvMode: appSettings.defaultThreadEnvMode,
+                    }),
+                    entryPoint: "database",
                   });
                 }}
               />

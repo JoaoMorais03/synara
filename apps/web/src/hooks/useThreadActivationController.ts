@@ -25,6 +25,7 @@ export type ThreadActivationControllerInput = {
   clearSelection: () => void;
   navigate: Navigate;
   openChatThreadPage: (threadId: ThreadId) => void;
+  openDatabaseThreadPage: (threadId: ThreadId) => void;
   openSidechatSplit: (input: {
     sidechatThreadId: ThreadId;
     sourceThreadId: ThreadId;
@@ -197,6 +198,8 @@ function activateThreadSingle(input: ThreadActivationControllerInput, threadId: 
   ).entryPoint;
   if (threadEntryPoint === "terminal") {
     input.openTerminalThreadPage(threadId);
+  } else if (threadEntryPoint === "database") {
+    input.openDatabaseThreadPage(threadId);
   } else {
     input.openChatThreadPage(threadId);
   }
@@ -219,6 +222,7 @@ export function useThreadActivationController(input: ThreadActivationControllerI
     clearSelection,
     navigate,
     openChatThreadPage,
+    openDatabaseThreadPage,
     openSidechatSplit,
     openTerminalThreadPage,
     prewarmThreadDetailForIntent,
@@ -241,6 +245,7 @@ export function useThreadActivationController(input: ThreadActivationControllerI
         clearSelection,
         navigate,
         openChatThreadPage,
+        openDatabaseThreadPage,
         openSidechatSplit,
         openTerminalThreadPage,
         prewarmThreadDetailForIntent,

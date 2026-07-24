@@ -74,9 +74,12 @@ import {
   LazyDiffPanel,
   noopChatSurfaceAction,
 } from "./ChatThreadSurfacePrimitives";
+import { DatabaseQuerySurface } from "../database/DatabaseQuerySurface";
+import { DockDatabasePane } from "../database/DockDatabasePane";
 import { PanelStateMessage } from "./PanelStateMessage";
 import { RightDock } from "./RightDock";
 import { RIGHT_DOCK_ADD_MENU_KINDS, getRightDockPaneMeta } from "./rightDockPaneMeta";
+import { selectThreadTerminalState, useTerminalStateStore } from "../../terminalStateStore";
 import {
   CHAT_BACKGROUND_CLASS_NAME,
   CHAT_MAIN_CONTENT_SURFACE_CLASS_NAME,
@@ -172,6 +175,9 @@ export function SingleChatSurface(props: {
   const navigate = useNavigate();
   const createSplitView = useSplitViewStore((store) => store.createFromThread);
   const createSplitViewFromDrop = useSplitViewStore((store) => store.createFromDrop);
+  const threadPrimarySurface = useTerminalStateStore(
+    (store) => selectThreadTerminalState(store.terminalStateByThreadId, props.threadId).entryPoint,
+  );
   const dockState = useRightDockStore(
     useMemo(() => selectRightDockState(props.threadId), [props.threadId]),
   );
@@ -724,6 +730,8 @@ export function SingleChatSurface(props: {
             />
           </Suspense>
         );
+      case "database":
+        return <DockDatabasePane projectId={props.projectId} />;
       case "explorer":
         return (
           <Suspense fallback={<PanelStateMessage>Loading explorer...</PanelStateMessage>}>
@@ -837,6 +845,20 @@ export function SingleChatSurface(props: {
     hasOpenedPanel: true,
     lastOpenPanel: "browser",
   };
+
+  // Database-primary threads skip chat/dock chrome and render the manager full-page,
+  // matching terminal-first rows under the project while staying on /$threadId.
+  if (threadPrimarySurface === "database") {
+    return (
+      <RouteInsetSurface surfaceClassName={CHAT_BACKGROUND_CLASS_NAME}>
+        <DatabaseQuerySurface
+          mode="page"
+          projectId={props.projectId}
+          projectName={activeProject?.name ?? null}
+        />
+      </RouteInsetSurface>
+    );
+  }
 
   if (props.search.view === "editor") {
     return (

@@ -264,6 +264,15 @@ export const WS_METHODS = {
   automationArchiveRun: "automation.archiveRun",
   automationResolveProposal: "automation.resolveProposal",
   subscribeAutomationEvents: "automation.subscribe",
+
+  // Project database connections (simple query pane)
+  databaseListConnections: "database.listConnections",
+  databaseUpsertConnection: "database.upsertConnection",
+  databaseDeleteConnection: "database.deleteConnection",
+  databaseTestConnection: "database.testConnection",
+  databaseQuery: "database.query",
+  databaseApplyCellEdits: "database.applyCellEdits",
+  databaseInspectSchema: "database.inspectSchema",
 } as const;
 
 // ── Push Event Channels ──────────────────────────────────────────────
