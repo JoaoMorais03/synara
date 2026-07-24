@@ -37,10 +37,24 @@ Commit: `feat(ade): fail-close External MCP product APIs`
 - Route integration tests reduced to fail-closed coverage; body-read unit tests kept
 - This progress note
 
-## Hygiene (landed on same branch)
+## Hygiene / polish (landed on same branch)
 
 - Fix `apps/server` database connection store typecheck errors (readonly columns builder + Effect error types)
 - Server `tsc --noEmit` clean after that fix
+- CONTRIBUTING product-direction pointer to this plan
+- Advanced settings session copy: desktop says "app session", not browser/pairing
+
+## Branch commits (ahead of `main`, not merged)
+
+```
+74ba1469 fix(settings): use desktop wording for session sign-out
+4f46ef83 docs: point contributors at simple macOS ADE direction
+b15d3104 fix(database): clear server typecheck for connection store
+a898d6d1 feat(ade): fail-close External MCP product APIs
+14897ede feat(desktop): focus product on simple macOS ADE
+```
+
+Remote: `origin/feat/macos-simple-ade` on `JoaoMorais03/synara` (fork only).
 
 ## Still deferred (Phase C+)
 
