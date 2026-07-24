@@ -26,18 +26,24 @@ export const DEFAULT_SYNARA_HOME = Effect.map(Effect.service(Path.Path), (path) 
   path.join(homedir(), ".synara"),
 );
 
+// Product path is macOS desktop ADE.
+// `web` is the Electron renderer AND a local browser harness for UI testing
+// (never a shipped web product). `cli` is the internal backend process.
 const MODE_ARGS = {
-  dev: [
+  // Product default: Electron shell + renderer HMR + desktop-spawned backend.
+  dev: ["run", "dev", "--filter=@synara/desktop", "--filter=@synara/web", "--parallel"],
+  "dev:server": ["run", "dev", "--filter=@synara/cli"],
+  // Vite renderer only (pair with an already-running backend/desktop).
+  "dev:web": ["run", "dev", "--filter=@synara/web"],
+  // Testing only: backend + browser UI, no Electron. Faster than full desktop.
+  "dev:test": [
     "run",
     "dev",
-    "--ui=tui",
     "--filter=@synara/contracts",
     "--filter=@synara/web",
     "--filter=@synara/cli",
     "--parallel",
   ],
-  "dev:server": ["run", "dev", "--filter=@synara/cli"],
-  "dev:web": ["run", "dev", "--filter=@synara/web"],
   "dev:desktop": ["run", "dev", "--filter=@synara/desktop", "--filter=@synara/web", "--parallel"],
 } as const satisfies Record<string, ReadonlyArray<string>>;
 
@@ -232,12 +238,8 @@ export function createDevRunnerEnv({
       delete output.SYNARA_LOG_WS_EVENTS;
     }
 
-    if (mode === "dev") {
-      output.SYNARA_MODE = "web";
-      delete output.SYNARA_DESKTOP_WS_URL;
-    }
-
-    if (mode === "dev:server" || mode === "dev:web") {
+    // Browser / test harness modes (no Electron). Product path is dev:desktop.
+    if (mode === "dev" || mode === "dev:test" || mode === "dev:server" || mode === "dev:web") {
       output.SYNARA_MODE = "web";
       delete output.SYNARA_DESKTOP_WS_URL;
     }

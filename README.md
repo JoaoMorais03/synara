@@ -1,48 +1,87 @@
 # Synara
 
-To let a local MCP-capable app create and follow scoped Synara tasks, see
-[External MCP integrations](docs/external-mcp.md).
+**Simple, intuitive ADE for macOS.**
 
-Synara is a local-first desktop app for coding with the AI agents and subscriptions you already use.
-
-It brings chats, terminals, browser previews, diffs, branches, provider sessions, and handoffs into one focused workspace so you can run agent work without juggling a dozen windows.
+Synara is a local-first macOS desktop app for coding with the AI agents and subscriptions you already use — without a web product, without a public orchestration CLI, and without External MCP pairing. One focused ADE: chats, terminals, browser previews, diffs, branches, and handoffs in a single window.
 
 ![Synara app showing parallel agent threads, terminal output, and project navigation](assets/prod/readme-screenshot.jpeg)
 
+## Product focus
+
+- **macOS desktop only** — Electron shell + local backend. No hosted web product, no marketing site in this repo.
+- **Simple ADE** — start working; avoid configuration sprawl and multi-surface complexity.
+- **Your agents, local** — Claude Code, Codex, Cursor, Grok, OpenCode, and related CLIs you already authorize.
+- **Not an MCP hub** — we do not ship External MCP integrations for other tools to orchestrate Synara remotely.
+- **`apps/web` is not a product** — it is the desktop renderer. The same stack can run in a local browser **for testing only** (see below).
+
 ## What it does
 
-- Use the AI accounts you already pay for: Claude Code, Codex, Antigravity, OpenCode, Cursor, Grok, Kilo Code, and Pi.
-- Run parallel work across projects, threads, and isolated Git worktrees without branches stepping on each other.
-- Keep split chats, terminals, browser previews, and agent output visible in the same window.
-- Hand off a thread to another provider when you want a second model to pick up with the same context.
-- Review diffs, create branches, commit, push, and open PRs from the app.
-- Keep your workspace local. Synara stores chats, projects, and history on your machine and talks directly to the providers you choose.
+- Use AI accounts you already pay for.
+- Run parallel work across projects, threads, and isolated Git worktrees.
+- Keep split chats, terminals, browser previews, and agent output in one window.
+- Hand off a thread to another provider with shared context.
+- Review diffs, branches, commits, pushes, and PRs from the app.
+- Keep workspace data local on your machine.
 
 ## How to use
 
 > [!WARNING]
-> You need to have [Codex CLI](https://github.com/openai/codex) installed and authorized for Codex sessions to work.
+> You need the relevant provider CLIs installed and authorized (for example [Codex CLI](https://github.com/openai/codex) for Codex sessions).
 
-Install the [desktop app from the Releases page](https://github.com/Emanuele-web04/Synara/releases), or download it from [trysynara.com](https://www.trysynara.com/).
+### Install (macOS)
 
-You can also run Synara locally while the project is still early:
+Use a macOS build from [Releases](https://github.com/Emanuele-web04/Synara/releases) when available, or run from source:
 
 ```sh
 bun install
 bun run dev
 ```
 
+`bun run dev` starts the **desktop** ADE (Electron + renderer HMR + local backend). That is the product path.
+
+### Local testing without Electron
+
+Building/restarting full Electron is slower when you only need UI + backend. Keep using the web stack as a **dev harness only** — never as a shipped web app:
+
+```sh
+# Backend + browser UI (no Electron). Prefer this for quick UI iteration.
+bun run dev:test
+
+# Aliases / pieces:
+bun run dev:web        # same as dev:test
+bun run dev:server     # backend only
+bun run dev:renderer   # Vite renderer only (if backend already running)
+```
+
+| Command | What it runs | Use for |
+|---------|----------------|---------|
+| `bun run dev` | Desktop (Electron) + renderer | Real product behavior |
+| `bun run dev:test` | Local backend + browser UI | Faster testing / UI work |
+| `bun run dev:renderer` | Vite only | HMR against an existing backend |
+
+> [!IMPORTANT]
+> **There is no web product.** Browser mode exists so contributors and agents can test without packaging Electron. Do not treat it as a hosted or multi-user surface, and do not reintroduce marketing/public web positioning around it.
+
+### Package a macOS DMG
+
+```sh
+bun run dist:desktop:dmg
+# or architecture-specific:
+bun run dist:desktop:dmg:arm64
+bun run dist:desktop:dmg:x64
+```
+
 ## Privacy
 
 Synara runs as the workspace layer on your machine. There is no Synara cloud holding your repositories, chats, or project history.
 
-The provider you choose still receives the prompts, file snippets, diffs, terminal output, or tool results needed for a session, but that traffic goes to the provider you picked rather than through a separate Synara-hosted workspace.
+The provider you choose still receives the prompts, file snippets, diffs, terminal output, or tool results needed for a session — that traffic goes to the provider you picked, not through a separate Synara-hosted workspace.
 
-## Some notes
+## Notes
 
-Synara is still very early. Expect bugs, rough edges, and fast-moving internals.
+Synara is early. Expect bugs, rough edges, and fast-moving internals.
 
-Focused issues and PRs are welcome, especially bug fixes, reliability fixes, and small maintenance improvements.
+This fork/workspace is steered toward a **simple macOS ADE**. Contributions that reintroduce web hosting, public MCP pairing, or heavy multi-platform product surfaces are out of scope unless explicitly requested.
 
 ## Contributing
 
