@@ -65,6 +65,7 @@ import {
 import { Keybindings } from "./keybindings";
 import { createLocalPreviewGrant } from "./localImageFiles";
 import { listLocalServers, stopLocalServer } from "./localServerMonitor";
+import { markdownNotesEffect } from "./markdownNotes";
 import { listManagedWorktrees, pruneProjectedArchivedManagedWorktrees } from "./managedWorktrees";
 import {
   attachmentPrincipalForSession,
@@ -1058,6 +1059,18 @@ const makeWsRpcHandlersLayer = () =>
           ),
         [WS_METHODS.filesystemBrowse]: (input) =>
           rpcEffect(workspaceEntries.browse(input), "Failed to browse filesystem"),
+        [WS_METHODS.notesList]: () =>
+          rpcEffect(markdownNotesEffect.list(config.stateDir), "Failed to list notes"),
+        [WS_METHODS.notesRead]: (input) =>
+          rpcEffect(markdownNotesEffect.read(config.stateDir, input.id), "Failed to read note"),
+        [WS_METHODS.notesWrite]: (input) =>
+          rpcEffect(markdownNotesEffect.write(config.stateDir, input), "Failed to write note"),
+        [WS_METHODS.notesCreate]: (input) =>
+          rpcEffect(markdownNotesEffect.create(config.stateDir, input), "Failed to create note"),
+        [WS_METHODS.notesDelete]: (input) =>
+          rpcEffect(markdownNotesEffect.delete(config.stateDir, input.id), "Failed to delete note"),
+        [WS_METHODS.notesRename]: (input) =>
+          rpcEffect(markdownNotesEffect.rename(config.stateDir, input), "Failed to rename note"),
         [WS_METHODS.shellOpenInEditor]: (input) =>
           rpcEffect(open.openInEditor(input), "Failed to open editor"),
 

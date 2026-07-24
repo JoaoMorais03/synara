@@ -84,6 +84,14 @@ import {
 } from "./project";
 import { StudioListThreadOutputsInput } from "./studio";
 import { FilesystemBrowseInput } from "./filesystem";
+import {
+  NotesCreateInput,
+  NotesDeleteInput,
+  NotesListInput,
+  NotesReadInput,
+  NotesRenameInput,
+  NotesWriteInput,
+} from "./notes";
 import { OpenInEditorInput } from "./editor";
 import {
   ServerConfigUpdatedPayload,
@@ -146,6 +154,14 @@ export const WS_METHODS = {
 
   // Filesystem browse methods
   filesystemBrowse: "filesystem.browse",
+
+  // Markdown notes (global scratchpad under Synara stateDir/notes)
+  notesList: "notes.list",
+  notesRead: "notes.read",
+  notesWrite: "notes.write",
+  notesCreate: "notes.create",
+  notesDelete: "notes.delete",
+  notesRename: "notes.rename",
 
   // Shell methods
   shellOpenInEditor: "shell.openInEditor",
@@ -315,6 +331,14 @@ const WebSocketRequestBody = Schema.Union([
   tagRequestBody(WS_METHODS.studioListThreadOutputs, StudioListThreadOutputsInput),
 
   tagRequestBody(WS_METHODS.filesystemBrowse, FilesystemBrowseInput),
+
+  // Markdown notes
+  tagRequestBody(WS_METHODS.notesList, NotesListInput),
+  tagRequestBody(WS_METHODS.notesRead, NotesReadInput),
+  tagRequestBody(WS_METHODS.notesWrite, NotesWriteInput),
+  tagRequestBody(WS_METHODS.notesCreate, NotesCreateInput),
+  tagRequestBody(WS_METHODS.notesDelete, NotesDeleteInput),
+  tagRequestBody(WS_METHODS.notesRename, NotesRenameInput),
 
   // Shell methods
   tagRequestBody(WS_METHODS.shellOpenInEditor, OpenInEditorInput),

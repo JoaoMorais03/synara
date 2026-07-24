@@ -467,6 +467,14 @@ export function createWsNativeApi(): NativeApi {
     filesystem: {
       browse: (input) => transport.request(WS_METHODS.filesystemBrowse, input),
     },
+    notes: {
+      list: () => transport.request(WS_METHODS.notesList, {}),
+      read: (input) => transport.request(WS_METHODS.notesRead, input),
+      write: (input) => transport.request(WS_METHODS.notesWrite, input),
+      create: (input = {}) => transport.request(WS_METHODS.notesCreate, input),
+      delete: (input) => transport.request(WS_METHODS.notesDelete, input),
+      rename: (input) => transport.request(WS_METHODS.notesRename, input),
+    },
     studio: {
       listThreadOutputs: (input) => transport.request(WS_METHODS.studioListThreadOutputs, input),
     },
