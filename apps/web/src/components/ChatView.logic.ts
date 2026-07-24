@@ -23,6 +23,7 @@ import {
   type WorktreeSetupStepId,
 } from "../types";
 import { type DraftThreadState } from "../composerDraftStore";
+import { terminalIdentityForProvider } from "../lib/bareCliLaunch";
 import { Schema } from "effect";
 import {
   filterTerminalContextsWithText,
@@ -531,17 +532,20 @@ export function buildLocalDraftThread(
   draftThread: DraftThreadState,
   fallbackModelSelection: ModelSelection,
   error: string | null,
+  options?: { readonly title?: string },
 ): Thread {
+  const seededTitle = options?.title?.trim() || null;
   return {
     id: threadId,
     codexThreadId: null,
     projectId: draftThread.projectId,
     title:
-      draftThread.entryPoint === "terminal"
-        ? "New terminal"
+      seededTitle ??
+      (draftThread.entryPoint === "terminal"
+        ? terminalIdentityForProvider(fallbackModelSelection.provider).title
         : draftThread.entryPoint === "database"
           ? "New database"
-          : "New thread",
+          : "New thread"),
     modelSelection: fallbackModelSelection,
     runtimeMode: draftThread.runtimeMode,
     interactionMode: draftThread.interactionMode,

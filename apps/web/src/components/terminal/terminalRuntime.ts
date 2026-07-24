@@ -1034,11 +1034,13 @@ export function createRuntimeEntry(config: TerminalRuntimeConfig): TerminalRunti
       }
 
       if (event.type === "activity") {
-        if (entry.terminalCliKind !== event.cliKind) {
+        // Never clear an established CLI identity with a null activity update —
+        // bare-CLI launches seed metadata before the process is detected.
+        if (event.cliKind != null && entry.terminalCliKind !== event.cliKind) {
           entry.terminalCliKind = event.cliKind;
           entry.callbacks.onTerminalMetadataChange(entry.terminalId, {
             cliKind: event.cliKind,
-            label: event.cliKind ? defaultTerminalTitleForCliKind(event.cliKind) : "Terminal",
+            label: defaultTerminalTitleForCliKind(event.cliKind),
           });
         }
         entry.callbacks.onTerminalActivityChange(entry.terminalId, {

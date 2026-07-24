@@ -27,6 +27,8 @@ interface UseChatTerminalControllerInput {
   readonly isFocusedPane: boolean;
   readonly isServerThread: boolean;
   readonly confirmTerminalClose: boolean;
+  /** Studio bare-CLI threads always delete on last close (never reveal agent chat). */
+  readonly forceDeleteOnLastClose?: boolean;
   readonly onDeletePlaceholderThread: (threadId: ThreadId) => Promise<void> | void;
 }
 
@@ -38,6 +40,7 @@ export function useChatTerminalController({
   isFocusedPane,
   isServerThread,
   confirmTerminalClose,
+  forceDeleteOnLastClose = false,
   onDeletePlaceholderThread,
 }: UseChatTerminalControllerInput) {
   const terminalState = useTerminalStateStore((state) =>
@@ -246,12 +249,15 @@ export function useChatTerminalController({
       const api = readNativeApi();
       if (!activeThreadId || !api) return;
       const isFinalTerminal = terminalState.terminalIds.length <= 1;
-      const shouldDeletePlaceholderThread = shouldAutoDeleteTerminalThreadOnLastClose({
-        isLastTerminal: isFinalTerminal,
-        isServerThread,
-        terminalEntryPoint: terminalState.entryPoint,
-        thread: activeThread,
-      });
+      const shouldDeletePlaceholderThread =
+        forceDeleteOnLastClose && isFinalTerminal && isServerThread
+          ? true
+          : shouldAutoDeleteTerminalThreadOnLastClose({
+              isLastTerminal: isFinalTerminal,
+              isServerThread,
+              terminalEntryPoint: terminalState.entryPoint,
+              thread: activeThread,
+            });
       const confirmed = await confirmTerminalTabClose({
         api,
         enabled: shouldPromptForTerminalClose({
@@ -285,6 +291,7 @@ export function useChatTerminalController({
       activeThreadId,
       closeTerminalInStore,
       confirmTerminalClose,
+      forceDeleteOnLastClose,
       isServerThread,
       onDeletePlaceholderThread,
       requestTerminalFocus,

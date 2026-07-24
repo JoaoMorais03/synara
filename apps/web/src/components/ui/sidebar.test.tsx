@@ -34,7 +34,14 @@ describe("sidebar interactive cursors", () => {
     expect(html).toContain("cursor-pointer");
   });
 
-  it("lets project drag handles override the default pointer cursor", () => {
+  it("keeps pointer on hover; grabbing only while dragging is applied by callers", () => {
+    const html = renderSidebarButton("cursor-pointer");
+
+    expect(html).toContain("cursor-pointer");
+    expect(html).not.toContain("cursor-grab");
+  });
+
+  it("lets an explicit grab cursor override the default pointer when requested", () => {
     const html = renderSidebarButton("cursor-grab");
 
     expect(html).toContain("cursor-grab");

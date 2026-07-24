@@ -8,7 +8,7 @@ import type { TerminalIconKey } from "@synara/shared/terminalThreads";
 import { TerminalSquare } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 
-import { ClaudeAI, OpenAI } from "../Icons";
+import { ClaudeAI, CursorIcon, GrokIcon, OpenAI, OpenCodeIcon } from "../Icons";
 
 interface TerminalIdentityIconProps {
   iconKey: TerminalIconKey;
@@ -22,7 +22,13 @@ export default function TerminalIdentityIcon({ iconKey, className }: TerminalIde
       ? OpenAI
       : iconKey === "claude"
         ? ClaudeAI
-        : TerminalSquare;
+        : iconKey === "cursor"
+          ? CursorIcon
+          : iconKey === "grok"
+            ? GrokIcon
+            : iconKey === "opencode"
+              ? OpenCodeIcon
+              : TerminalSquare;
 
   return (
     <span className={cn("inline-flex shrink-0 items-center justify-center", className)}>

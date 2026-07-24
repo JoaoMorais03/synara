@@ -154,7 +154,6 @@ import {
   type AutomationDraftWarningId,
 } from "../lib/automationDraft";
 import { dispatchThreadRename } from "../lib/threadRename";
-import { useHandleNewChat } from "../hooks/useHandleNewChat";
 import { useComposerDropzone } from "../hooks/useComposerDropzone";
 import { useDiffRouteSearch } from "../hooks/useDiffRouteSearch";
 import {
@@ -280,6 +279,9 @@ import {
 import PlanSidebar from "./PlanSidebar";
 import TerminalWorkspaceTabs from "./TerminalWorkspaceTabs";
 import ThreadTerminalDrawer from "./ThreadTerminalDrawer";
+import type { TerminalCliKind } from "@synara/shared/terminalThreads";
+import { defaultTerminalTitleForCliKind } from "@synara/shared/terminalThreads";
+import { providerKindForTerminalCliKind } from "../lib/bareCliLaunch";
 import {
   ChevronDownIcon,
   ComposerSendArrowIcon,
@@ -409,6 +411,7 @@ import {
   CHAT_SURFACE_HEADER_ROW_CLASS_NAME,
 } from "./chat/chatHeaderControls";
 import { SidebarHeaderNavigationControls } from "./SidebarHeaderNavigationControls";
+import { persistSidebarUiState, readSidebarUiState } from "./Sidebar.uiState";
 import { SidebarHeaderTrigger } from "./ui/sidebar";
 import {
   useDesktopTopBarTrafficLightGutterClassName,
@@ -545,6 +548,7 @@ import { useLocalStorage } from "~/hooks/useLocalStorage";
 import { useComposerSlashCommands } from "../hooks/useComposerSlashCommands";
 import { useFeatureFlags } from "../featureFlags";
 import { useHandleNewThread } from "../hooks/useHandleNewThread";
+import { useStartBareCliThread } from "../hooks/useStartBareCliThread";
 import {
   canCreateThreadHandoff,
   resolveAvailableHandoffTargetProviders,
@@ -1092,7 +1096,8 @@ export default function ChatView({
   const timestampFormat = settings.timestampFormat;
   const navigate = useNavigate();
   const { handleNewThread } = useHandleNewThread();
-  const { handleNewChat } = useHandleNewChat();
+  const { startBareCliThread } = useStartBareCliThread();
+  const bouncedAgentEmptyLandingRef = useRef<string | null>(null);
   const { createThreadHandoff } = useThreadHandoff();
   const rawSearch = useDiffRouteSearch();
   const activeSplitView = useSplitViewStore(
@@ -1649,21 +1654,45 @@ export default function ChatView({
   );
 
   const localDraftError = serverThread ? null : (localDraftErrorsByThreadId[threadId] ?? null);
-  const localDraftThread = useMemo(
-    () =>
-      draftThread
-        ? buildLocalDraftThread(
-            threadId,
-            draftThread,
-            fallbackDraftProject?.defaultModelSelection ?? {
-              provider: "codex",
-              model: DEFAULT_MODEL_BY_PROVIDER.codex,
-            },
-            localDraftError,
-          )
-        : undefined,
-    [draftThread, fallbackDraftProject?.defaultModelSelection, localDraftError, threadId],
+  // Bare-CLI create seeds cliKind before navigate; prefer it so the draft frame never
+  // paints the project's default Codex title/icon for one frame.
+  const seededTerminalCliKind = useTerminalStateStore(
+    (state) =>
+      selectThreadTerminalState(state.terminalStateByThreadId, threadId).terminalCliKindsById[
+        DEFAULT_THREAD_TERMINAL_ID
+      ] ?? null,
   );
+  const localDraftThread = useMemo(() => {
+    if (!draftThread) {
+      return undefined;
+    }
+    const seededProvider =
+      draftThread.entryPoint === "terminal" && seededTerminalCliKind
+        ? providerKindForTerminalCliKind(seededTerminalCliKind)
+        : null;
+    const modelSelection = seededProvider
+      ? {
+          provider: seededProvider,
+          model: DEFAULT_MODEL_BY_PROVIDER[seededProvider],
+        }
+      : (fallbackDraftProject?.defaultModelSelection ?? {
+          provider: "codex" as const,
+          model: DEFAULT_MODEL_BY_PROVIDER.codex,
+        });
+    const seededTitle =
+      draftThread.entryPoint === "terminal" && seededTerminalCliKind
+        ? defaultTerminalTitleForCliKind(seededTerminalCliKind)
+        : undefined;
+    return buildLocalDraftThread(threadId, draftThread, modelSelection, localDraftError, {
+      ...(seededTitle ? { title: seededTitle } : {}),
+    });
+  }, [
+    draftThread,
+    fallbackDraftProject?.defaultModelSelection,
+    localDraftError,
+    seededTerminalCliKind,
+    threadId,
+  ]);
   const activeThread = serverThread ?? localDraftThread;
   useEffect(() => {
     if (
@@ -1733,6 +1762,25 @@ export default function ChatView({
   const activeProject = useStore(
     useMemo(() => createProjectSelector(activeProjectId), [activeProjectId]),
   );
+  const homeDir = useWorkspaceStore((state) => state.homeDir);
+  const chatWorkspaceRoot = useWorkspaceStore((state) => state.chatWorkspaceRoot);
+  const studioWorkspaceRoot = useWorkspaceStore((state) => state.studioWorkspaceRoot);
+  const isHomeChatContainer = isHomeChatContainerProject(activeProject, {
+    homeDir,
+    chatWorkspaceRoot,
+  });
+  const isStudioContainer = isStudioContainerProject(activeProject, {
+    homeDir,
+    chatWorkspaceRoot,
+    studioWorkspaceRoot,
+  });
+  // Peek terminal entry point early so bare-CLI close never falls back to agent chat.
+  const earlyTerminalEntryPoint = useTerminalStateStore((state) =>
+    selectThreadTerminalState(state.terminalStateByThreadId, threadId).entryPoint,
+  );
+  // One CLI thread = one PTY surface (no tab strip / + / x) — Studio and Projects alike.
+  const isBareCliThread = earlyTerminalEntryPoint === "terminal";
+  const isBareStudioCli = isStudioContainer && isBareCliThread;
   const deletePlaceholderTerminalThread = useCallback(
     async (terminalThreadId: ThreadId) => {
       const api = readNativeApi();
@@ -1766,7 +1814,52 @@ export default function ChatView({
             return;
           }
         }
-        await handleNewChat({ fresh: true });
+        if (isBareStudioCli) {
+          await navigate({ to: "/studio", replace: true });
+          return;
+        }
+        if (isBareCliThread) {
+          // Prefer another thread in the same project; otherwise home empty (no auto-spawn).
+          const projectId = activeProject?.id ?? null;
+          const fallbackThreadId = projectId
+            ? (useStore.getState().threadIds ?? []).find((candidateId) => {
+                if (candidateId === terminalThreadId) {
+                  return false;
+                }
+                const summary = useStore.getState().sidebarThreadSummaryById[candidateId];
+                return (
+                  summary !== undefined &&
+                  summary.projectId === projectId &&
+                  (summary.archivedAt ?? null) === null
+                );
+              }) ?? null
+            : null;
+          if (fallbackThreadId) {
+            await navigate({
+              to: "/$threadId",
+              params: { threadId: fallbackThreadId },
+              replace: true,
+            });
+            return;
+          }
+          const sidebarUi = readSidebarUiState();
+          if (sidebarUi.lastThreadRoute) {
+            persistSidebarUiState({
+              ...sidebarUi,
+              lastThreadRoute: null,
+            });
+          }
+          await navigate({ to: "/", replace: true });
+          return;
+        }
+        const sidebarUi = readSidebarUiState();
+        if (sidebarUi.lastThreadRoute) {
+          persistSidebarUiState({
+            ...sidebarUi,
+            lastThreadRoute: null,
+          });
+        }
+        await navigate({ to: "/", replace: true });
       } catch (error) {
         console.error("Failed to delete empty terminal thread after closing its last terminal", {
           threadId: terminalThreadId,
@@ -1774,7 +1867,14 @@ export default function ChatView({
         });
       }
     },
-    [activeSplitView, handleNewChat, navigate, removeThreadFromSplitViews],
+    [
+      activeProject?.id,
+      activeSplitView,
+      isBareCliThread,
+      isBareStudioCli,
+      navigate,
+      removeThreadFromSplitViews,
+    ],
   );
   const {
     terminalState,
@@ -1819,25 +1919,14 @@ export default function ChatView({
     isFocusedPane,
     isServerThread,
     confirmTerminalClose: settings.confirmTerminalTabClose,
+    forceDeleteOnLastClose: isBareCliThread,
     onDeletePlaceholderThread: deletePlaceholderTerminalThread,
   });
   const projectInstructions = useProjectInstructionsStore((state) =>
     activeProjectId ? (state.instructionsByProjectId[activeProjectId] ?? "") : "",
   );
   const setProjectInstructions = useProjectInstructionsStore((state) => state.setInstructions);
-  const homeDir = useWorkspaceStore((state) => state.homeDir);
-  const chatWorkspaceRoot = useWorkspaceStore((state) => state.chatWorkspaceRoot);
-  const studioWorkspaceRoot = useWorkspaceStore((state) => state.studioWorkspaceRoot);
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
-  const isHomeChatContainer = isHomeChatContainerProject(activeProject, {
-    homeDir,
-    chatWorkspaceRoot,
-  });
-  const isStudioContainer = isStudioContainerProject(activeProject, {
-    homeDir,
-    chatWorkspaceRoot,
-    studioWorkspaceRoot,
-  });
   const isContainerLandingProject = isHomeChatContainer || isStudioContainer;
   const activeProjectDisplayName = isHomeChatContainer
     ? activeProject?.folderName
@@ -3062,13 +3151,9 @@ export default function ChatView({
     },
     [activeThreadId],
   );
-  // Empty top-level threads render the centered landing composer instead of the transcript pane.
-  // Home-scoped chats get the global "What should we work on?" copy plus the project picker,
-  // while project-scoped drafts reuse the same centered layout with folder-specific copy.
+  // Empty top-level threads briefly show a non-composer placeholder while we bounce to a CLI.
   const isCenteredEmptyLanding =
     timelineEntries.length === 0 && !activeThread?.parentThreadId && !isEditorRail;
-  const isEmptyChatLanding =
-    isCenteredEmptyLanding && Boolean(homeDir) && isContainerLandingProject;
   const { turnDiffSummaries, inferredCheckpointTurnCountByTurnId } =
     useTurnDiffSummaries(activeThread);
   const turnDiffSummaryByAssistantMessageId = useMemo(() => {
@@ -3699,10 +3784,10 @@ export default function ChatView({
     threadEntryPoint: terminalState.entryPoint,
     terminalWorkspaceTerminalTabActive,
   });
-  // Terminal-only threads should not pay to mount the hidden chat/composer pane.
-  const shouldRenderChatPaneContent = !(
-    terminalWorkspaceTerminalTabActive && terminalState.workspaceLayout === "terminal-only"
-  );
+  // Terminal-only bare CLI threads should not mount the agent chat/composer pane.
+  const shouldRenderChatPaneContent =
+    !isBareCliThread &&
+    !(terminalWorkspaceTerminalTabActive && terminalState.workspaceLayout === "terminal-only");
   const secondaryChromeThreadId = activeThread?.id ?? threadId;
   const shouldDeferSecondaryChrome =
     activeThread !== undefined && !isCenteredEmptyLanding && !terminalWorkspaceTerminalTabActive;
@@ -3997,7 +4082,7 @@ export default function ChatView({
       threadId,
       onTogglePanel: hasRightDockPanes ? toggleRightDock : undefined,
       isPanelOpen: hasRightDockPanes ? rightDockOpen : undefined,
-      cwd: gitCwd ?? activeProject?.cwd ?? "",
+      cwd: terminalState.preferredCwd?.trim() || gitCwd || activeProject?.cwd || "",
       runtimeEnv: threadTerminalRuntimeEnv,
       height: terminalState.terminalHeight,
       terminalIds: terminalState.terminalIds,
@@ -4033,7 +4118,7 @@ export default function ChatView({
       },
       onTerminalMetadataChange: (
         terminalId: string,
-        metadata: { cliKind: "codex" | "claude" | null; label: string },
+        metadata: { cliKind: TerminalCliKind | null; label: string },
       ) => {
         if (!activeThreadId) return;
         storeSetTerminalMetadata(activeThreadId, terminalId, metadata);
@@ -4049,6 +4134,7 @@ export default function ChatView({
         storeSetTerminalActivity(activeThreadId, terminalId, activity);
       },
       onAddTerminalContext: addTerminalContextToDraft,
+      bareCliSurface: isBareCliThread,
     }),
     [
       activeProject?.cwd,
@@ -4062,6 +4148,7 @@ export default function ChatView({
       moveTerminalToNewGroup,
       gitCwd,
       activeThreadId,
+      isBareCliThread,
       newTerminalShortcutLabel,
       setTerminalHeight,
       splitTerminalRight,
@@ -4079,6 +4166,7 @@ export default function ChatView({
       terminalState.terminalCliKindsById,
       terminalState.terminalGroups,
       terminalState.terminalHeight,
+      terminalState.preferredCwd,
       terminalState.terminalIds,
       terminalState.terminalLabelsById,
       terminalState.terminalTitleOverridesById,
@@ -5343,6 +5431,9 @@ export default function ChatView({
       return;
     } else if (previous && !current) {
       terminalOpenByThreadRef.current[activeThreadId] = current;
+      if (isBareCliThread) {
+        return;
+      }
       const frame = window.requestAnimationFrame(() => {
         focusComposer();
       });
@@ -5352,7 +5443,65 @@ export default function ChatView({
     }
 
     terminalOpenByThreadRef.current[activeThreadId] = current;
-  }, [activeThreadId, focusComposer, requestTerminalFocus, terminalState.terminalOpen]);
+  }, [
+    activeThreadId,
+    focusComposer,
+    isBareCliThread,
+    requestTerminalFocus,
+    terminalState.terminalOpen,
+  ]);
+
+  // Agent-composer empty landings are gone. Never spawn from here — that raced with
+  // thread creation and looped (each new thread briefly looked empty → another spawn).
+  useLayoutEffect(() => {
+    if (!isCenteredEmptyLanding || isEditorRail) {
+      return;
+    }
+    if (earlyTerminalEntryPoint === "terminal" || isBareCliThread) {
+      return;
+    }
+    if (bouncedAgentEmptyLandingRef.current === threadId) {
+      return;
+    }
+    bouncedAgentEmptyLandingRef.current = threadId;
+    if (activeProject?.id) {
+      clearProjectDraftThreadId(activeProject.id, "chat");
+    }
+    // Drop this empty chat from restore memory or `/` will bounce right back here.
+    const sidebarUi = readSidebarUiState();
+    if (sidebarUi.lastThreadRoute?.threadId === threadId) {
+      persistSidebarUiState({
+        ...sidebarUi,
+        lastThreadRoute: null,
+      });
+    }
+    if (isStudioContainer) {
+      void navigate({ to: "/studio", replace: true });
+      return;
+    }
+    void navigate({ to: "/", replace: true });
+  }, [
+    activeProject?.id,
+    clearProjectDraftThreadId,
+    earlyTerminalEntryPoint,
+    isBareCliThread,
+    isCenteredEmptyLanding,
+    isEditorRail,
+    isStudioContainer,
+    navigate,
+    threadId,
+  ]);
+
+  // Archiving the last Studio CLI can leave you on a dead thread route — bounce to empty Studio.
+  useEffect(() => {
+    if (!isBareStudioCli || isEditorRail) {
+      return;
+    }
+    if ((activeThread?.archivedAt ?? null) === null) {
+      return;
+    }
+    void navigate({ to: "/studio", replace: true });
+  }, [activeThread?.archivedAt, isBareStudioCli, isEditorRail, navigate, threadId]);
 
   useEffect(() => {
     if (!activeThreadId) {
@@ -9105,7 +9254,7 @@ export default function ChatView({
         });
         return;
       }
-      await handleNewThread(activeProject.id, { entryPoint: "chat" });
+      await startBareCliThread({ projectId: activeProject.id });
     },
     handleInteractionModeChange,
     openForkTargetPicker: () => {
@@ -9795,131 +9944,8 @@ export default function ChatView({
       ? { onCheckoutPullRequestRequest: openPullRequestDialog }
       : {}),
   };
-  const showEmptyLandingBranchToolbar =
-    isCenteredEmptyLanding && activeProject?.kind === "project" && !isHomeChatContainer;
-  // Temporary is chosen while starting a chat. Draft metadata covers local reloads;
-  // the in-memory marker keeps the badge + auto-delete alive through promotion.
-  const isThreadTemporary = draftThread?.isTemporary === true || hasTemporaryThreadMarker;
-  const toggleDraftTemporary = () => {
-    const next = !isThreadTemporary;
-    setDraftThreadContext(threadId, { isTemporary: next });
-    if (next) {
-      markTemporaryThread(threadId);
-    } else {
-      clearTemporaryThread(threadId);
-    }
-  };
-  const showEmptyLandingProjectPicker =
-    isCenteredEmptyLanding && isLocalDraftThread && activeProject?.kind === "project";
-  const emptyLandingProjectChip =
-    !isEmptyChatLanding && !showEmptyLandingProjectPicker && activeProjectDisplayName ? (
-      <span className="inline-flex min-w-0 max-w-56 shrink items-center gap-2 overflow-hidden rounded-md px-2 py-1 text-[length:var(--app-font-size-ui-sm,11px)] font-normal text-[var(--color-text-foreground-secondary)] sm:max-w-64">
-        <FolderClosed className="size-3.5 shrink-0" />
-        <span className="min-w-0 truncate">{activeProjectDisplayName}</span>
-      </span>
-    ) : null;
-  const showEmptyLandingControls =
-    isCenteredEmptyLanding &&
-    (isEmptyChatLanding ||
-      showEmptyLandingProjectPicker ||
-      emptyLandingProjectChip !== null ||
-      showEmptyLandingBranchToolbar);
-  const emptyLandingControls = showEmptyLandingControls ? (
-    <div
-      className={cn(
-        // Full-width tray under the composer that reads as UNITED but not fused: it carries extra
-        // top height (pt-6) and is pulled up by that amount (-mt-5 = 20px, just past the
-        // --composer-radius ~19px corner). That hidden top slice sits BEHIND the composer's rounded
-        // bottom corners (z-0), so its tint fills those corner notches and its straight full-width
-        // top edge stays covered by the composer's solid sides — no gap/poke at the sides. The
-        // composer keeps its own rounded shape; the tray keeps its tint + rounded bottom.
-        "chat-composer-shell relative z-0 -mt-5 flex min-h-8 min-w-0 flex-nowrap items-center gap-x-1.5 overflow-hidden !rounded-t-none !rounded-b-[var(--composer-radius)] bg-[color-mix(in_srgb,var(--color-background-elevated-secondary)_76%,var(--color-background-surface)_24%)] px-2 pb-1.5 pt-6 transition-colors duration-150 ease-out motion-reduce:transition-none sm:min-h-7",
-        COMPOSER_COLUMN_FRAME_CLASS_NAME,
-      )}
-    >
-      {isEmptyChatLanding ? (
-        <ProjectPicker
-          align="start"
-          side="top"
-          triggerClassName="h-7 py-1"
-          showResetToHome={Boolean(resolvedThreadWorktreePath)}
-          selectedWorkspaceRoot={resolvedThreadWorktreePath}
-          onSelectWorkspaceRoot={handleSelectWorkspaceRoot}
-          onResetToHome={handleResetWorkspaceToHome}
-          // Studio folder picks only tag the chat's workspace root; they never create a
-          // Projects entry or move the draft out of the Studio container.
-          {...(isStudioContainer
-            ? {
-                emptyTriggerLabel: "Use a folder",
-                addActionLabel: "Choose a folder",
-                resetActionLabel: "Don't use a folder",
-                searchPlaceholder: "Search folders",
-              }
-            : {
-                onSelectProject: handleSelectProjectForEmptyDraft,
-                onCreateProjectFromPath: handleCreateProjectFromPickerPath,
-              })}
-        />
-      ) : showEmptyLandingProjectPicker ? (
-        <ProjectPicker
-          align="start"
-          side="top"
-          triggerClassName="h-7 py-1"
-          selectionMode="project"
-          selectedProjectId={activeProject.id}
-          selectedWorkspaceRoot={activeProject.cwd}
-          showResetToHome
-          onSelectProject={handleSelectProjectForEmptyDraft}
-          onCreateProjectFromPath={handleCreateProjectFromPickerPath}
-          onResetToHome={handleResetWorkspaceToHome}
-        />
-      ) : (
-        emptyLandingProjectChip
-      )}
-      {/* Reserve the Local/branch slot so project selection fades controls in without resizing. */}
-      <div
-        aria-hidden={showEmptyLandingBranchToolbar ? undefined : true}
-        className={cn(
-          "flex min-w-0 flex-1 items-center transition-[opacity,transform] duration-150 ease-out motion-reduce:transition-none",
-          showEmptyLandingBranchToolbar
-            ? "translate-y-0 opacity-100"
-            : "pointer-events-none opacity-0",
-        )}
-      >
-        {showEmptyLandingBranchToolbar ? (
-          <BranchToolbar
-            {...branchToolbarProps}
-            className="mx-0 min-w-0 flex-1 !justify-start !px-0 !pb-0 !pt-0"
-            showBranchSelector={isGitRepo}
-          />
-        ) : null}
-      </div>
-      {showEmptyLandingBranchToolbar ? (
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          aria-pressed={isThreadTemporary}
-          onClick={toggleDraftTemporary}
-          title={
-            isThreadTemporary
-              ? "Temporary chat — deleted when you leave. Click to keep it."
-              : "Make this a temporary chat (deleted when you leave)"
-          }
-          aria-label="Temporary chat"
-          className={cn(
-            "ml-auto shrink-0 gap-1.5 whitespace-nowrap px-2 text-[length:var(--app-font-size-ui-sm,11px)] font-normal transition-colors sm:px-2.5",
-            isThreadTemporary
-              ? "text-[var(--color-text-accent)] hover:bg-[var(--color-background-button-secondary-hover)] hover:text-[var(--color-text-accent)]"
-              : "text-[var(--color-text-foreground-secondary)] hover:bg-[var(--color-background-button-secondary-hover)] hover:text-[var(--color-text-foreground)]",
-          )}
-        >
-          <TemporaryThreadIcon className="size-3.5" />
-          <span className="sr-only sm:not-sr-only">Temporary</span>
-        </Button>
-      ) : null}
-    </div>
-  ) : null;
+  const showEmptyLandingControls = false;
+  const emptyLandingControls = null;
 
   const threadAutomationItems = heartbeatAutomationsForThread(
     automationData.definitions,
@@ -10575,7 +10601,18 @@ export default function ChatView({
           activeThreadId={activeThread.id}
           activeThreadTitle={activeThreadDisplayTitle}
           activeThreadEntryPoint={terminalState.entryPoint}
-          activeProvider={activeThread.session?.provider ?? activeThread.modelSelection.provider}
+          activeProvider={
+            seededTerminalCliKind
+              ? providerKindForTerminalCliKind(seededTerminalCliKind)
+              : (activeThread.session?.provider ?? activeThread.modelSelection.provider)
+          }
+          terminalCliKind={
+            terminalState.terminalCliKindsById[
+              terminalState.activeTerminalId ||
+                terminalState.terminalIds[0] ||
+                DEFAULT_THREAD_TERMINAL_ID
+            ] ?? seededTerminalCliKind
+          }
           activeProjectName={isEditorRail ? undefined : activeProjectDisplayName}
           threadBreadcrumbs={threadBreadcrumbs}
           {...(isEditorRail
@@ -10583,7 +10620,9 @@ export default function ChatView({
             : {})}
           isSidechat={Boolean(activeThread.sidechatSourceThreadId)}
           hideSidebarControls={isEditorRail}
-          hideHandoffControls={terminalWorkspaceTerminalTabActive || isEditorRail}
+          hideHandoffControls={
+            terminalWorkspaceTerminalTabActive || isEditorRail || isBareCliThread
+          }
           isGitRepo={isGitRepo}
           openInTarget={threadWorkspaceCwd}
           activeProjectScripts={isEditorRail ? undefined : activeProjectScripts}
@@ -10693,7 +10732,7 @@ export default function ChatView({
         rateLimitStatus={visibleActiveRateLimitStatus}
         onDismiss={dismissActiveRateLimitBanner}
       />
-      {terminalWorkspaceOpen && !isEditorRail ? (
+      {terminalWorkspaceOpen && !isEditorRail && !isBareCliThread ? (
         <TerminalWorkspaceTabs
           activeTab={terminalState.workspaceActiveTab}
           isWorking={isWorking}
@@ -10715,60 +10754,7 @@ export default function ChatView({
             )}
           >
             {shouldRenderChatPaneContent && isCenteredEmptyLanding ? (
-              <div
-                className={cn(
-                  "chat-pane-enter flex flex-1 items-center justify-center",
-                  CHAT_COLUMN_GUTTER_CLASS_NAME,
-                )}
-              >
-                {/* Center the heading, composer, and suggestion list together as a
-                    single group: the suggestions live in normal flow so the whole
-                    block (composer + suggestions) stays vertically centered in the
-                    view instead of the composer being centered with the list hanging
-                    below it. */}
-                <div className="flex w-full flex-col justify-center">
-                  <div
-                    className={cn(
-                      "flex flex-col items-center gap-4 px-6 pb-5 text-center select-none",
-                      CHAT_COLUMN_FRAME_CLASS_NAME,
-                    )}
-                  >
-                    <SynaraLogo aria-label="Synara logo" className="size-10" />
-                    <h2
-                      data-testid="empty-landing-heading"
-                      className="text-[26px] font-normal leading-[1.15] tracking-[-0.015em] text-foreground/95 sm:text-[30px]"
-                    >
-                      {isEmptyChatLanding ? (
-                        "What should we work on?"
-                      ) : (
-                        <>
-                          What should we do in{" "}
-                          <span className={COMPOSER_MUTED_ACCENT_TEXT_CLASS_NAME}>
-                            {activeProjectDisplayName ?? "this folder"}
-                          </span>
-                          ?
-                        </>
-                      )}
-                    </h2>
-                  </div>
-                  {composerSection}
-                  {(isGitRepo && !environmentEnabled && !isCenteredEmptyLanding) ||
-                  relocateComposerLeadingControls ? (
-                    <div className={COMPOSER_COLUMN_FRAME_CLASS_NAME}>
-                      <div className="flex w-full items-center gap-1">
-                        {relocateComposerLeadingControls ? (
-                          <div className="flex shrink-0 items-center gap-1 pl-1">
-                            {renderComposerLeadingControls({ iconOnly: true })}
-                          </div>
-                        ) : null}
-                        {isGitRepo && !environmentEnabled && !isCenteredEmptyLanding ? (
-                          <BranchToolbar {...branchToolbarProps} className="min-w-0 flex-1" />
-                        ) : null}
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
-              </div>
+              <div className="flex flex-1 bg-background" aria-hidden="true" />
             ) : null}
 
             {shouldRenderChatPaneContent && !isCenteredEmptyLanding ? (
@@ -10998,3 +10984,4 @@ export default function ChatView({
     </div>
   );
 }
+

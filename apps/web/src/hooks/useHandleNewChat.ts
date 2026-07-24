@@ -1,14 +1,14 @@
 import { ensureHomeChatProject } from "../lib/chatProjects";
-import { startContainerChat, type StartContainerChatResult } from "../lib/startContainerChat";
+import type { StartContainerChatResult } from "../lib/startContainerChat";
 import { useWorkspaceStore } from "../workspaceStore";
-import { useHandleNewThread } from "./useHandleNewThread";
+import { useStartBareCliThread } from "./useStartBareCliThread";
 
 export function useHandleNewChat() {
   const homeDir = useWorkspaceStore((state) => state.homeDir);
   const chatWorkspaceRoot = useWorkspaceStore((state) => state.chatWorkspaceRoot);
-  const { handleNewThread } = useHandleNewThread();
+  const { startBareCliThread } = useStartBareCliThread();
 
-  const handleNewChat = async (options?: {
+  const handleNewChat = async (_options?: {
     fresh?: boolean;
   }): Promise<StartContainerChatResult> => {
     if (!homeDir) {
@@ -18,12 +18,19 @@ export function useHandleNewChat() {
       };
     }
 
-    return startContainerChat({
-      ensureProjectId: () => ensureHomeChatProject({ homeDir, chatWorkspaceRoot }),
-      handleNewThread,
-      fresh: options?.fresh,
-      errorLabel: "Unable to prepare a new chat.",
-    });
+    try {
+      const projectId = await ensureHomeChatProject({ homeDir, chatWorkspaceRoot });
+      const threadId = await startBareCliThread({
+        projectId,
+        cwd: homeDir,
+      });
+      return { ok: true, threadId };
+    } catch (error) {
+      return {
+        ok: false,
+        error: error instanceof Error ? error.message : "Unable to prepare a new chat.",
+      };
+    }
   };
 
   return { handleNewChat };

@@ -31,6 +31,10 @@ export interface NewThreadOptions {
   temporary?: boolean;
   provider?: ProviderKind;
   fresh?: boolean;
+  /** When set, ChatView opens the PTY at this cwd instead of the project root. */
+  preferredTerminalCwd?: string | null;
+  /** Optional durable title for terminal-first creates (avoids "New terminal" flash). */
+  title?: string | null;
 }
 
 export interface InheritedThreadContext {

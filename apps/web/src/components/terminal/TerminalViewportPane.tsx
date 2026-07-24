@@ -52,6 +52,8 @@ interface TerminalViewportPaneProps {
   onMoveTerminalToGroup?: ((terminalId: string) => void) | undefined;
   onCloseTerminal?: ((terminalId: string) => void) | undefined;
   presentationMode: ThreadTerminalPresentationMode;
+  /** Studio bare-CLI: no tab strip, splits, or + — one thread = one PTY. */
+  chromeMode?: "full" | "bare";
   onTogglePresentationMode?: (() => void) | undefined;
   onTogglePanel?: (() => void) | undefined;
   isPanelOpen?: boolean | undefined;
@@ -113,10 +115,12 @@ export default function TerminalViewportPane({
   onMoveTerminalToGroup,
   onCloseTerminal,
   presentationMode,
+  chromeMode = "full",
   onTogglePresentationMode,
   onTogglePanel,
   isPanelOpen,
 }: TerminalViewportPaneProps) {
+  const bareChrome = chromeMode === "bare";
   const renderNode = (node: ThreadTerminalLayoutNode): ReactNode => {
     if (node.type === "terminal") {
       const activePaneTerminalId = node.terminalIds.includes(node.activeTerminalId)
@@ -124,7 +128,9 @@ export default function TerminalViewportPane({
         : (node.terminalIds[0] ?? resolvedActiveTerminalId);
       const isFocusedPane = activePaneTerminalId === resolvedActiveTerminalId;
       const canMoveActiveTerminalToGroup =
-        !!onMoveTerminalToGroup && canMoveTerminalToOwnGroup(layout, activePaneTerminalId);
+        !bareChrome &&
+        !!onMoveTerminalToGroup &&
+        canMoveTerminalToOwnGroup(layout, activePaneTerminalId);
       const moveActiveTerminalToGroup = () => {
         if (!onMoveTerminalToGroup) return;
         onMoveTerminalToGroup(activePaneTerminalId);
@@ -140,6 +146,7 @@ export default function TerminalViewportPane({
             }
           }}
         >
+          {bareChrome ? null : (
           <div className="flex min-h-9 items-center gap-1 bg-[var(--color-background-surface)] px-1.5 py-1">
             <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {node.terminalIds.map((terminalId) => {
@@ -246,6 +253,7 @@ export default function TerminalViewportPane({
               ) : null}
             </div>
           </div>
+          )}
 
           <div className="relative min-h-0 min-w-0 flex-1 bg-[var(--color-background-surface)]">
             {node.terminalIds.map((terminalId) => {

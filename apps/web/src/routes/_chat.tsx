@@ -17,6 +17,7 @@ import { useHandleNewChat } from "../hooks/useHandleNewChat";
 import { useHandleNewStudioChat } from "../hooks/useHandleNewStudioChat";
 import { useTemporaryThreadLifecycle } from "../hooks/useTemporaryThreadLifecycle";
 import { useHandleNewThread } from "../hooks/useHandleNewThread";
+import { useStartBareCliThread } from "../hooks/useStartBareCliThread";
 import { useRecentViewSwitcher } from "../hooks/useRecentViewSwitcher";
 import { useLatestProjectStore } from "../latestProjectStore";
 import {
@@ -25,7 +26,6 @@ import {
   resolveLatestProjectTargetIdWithFallback,
   resolveNewThreadTarget,
 } from "../lib/projectShortcutTargets";
-import { resolveInheritedThreadContext } from "../lib/threadBootstrap";
 import { isTerminalFocused } from "../lib/terminalFocus";
 import { serverConfigQueryOptions } from "../lib/serverReactQuery";
 import { startFreshChatForActiveSurface } from "../lib/startContainerChat";
@@ -214,8 +214,6 @@ function ChatRouteGlobalShortcuts() {
     activeContextThreadId,
     activeDraftThread,
     activeProjectId,
-    activeThread,
-    handleNewThread,
     projects,
   } = useHandleNewThread();
   const {
@@ -231,6 +229,7 @@ function ChatRouteGlobalShortcuts() {
   });
   const { handleNewChat } = useHandleNewChat();
   const { handleNewStudioChat } = useHandleNewStudioChat();
+  const { startBareCliThread } = useStartBareCliThread();
   const homeDir = useWorkspaceStore((state) => state.homeDir);
   const chatWorkspaceRoot = useWorkspaceStore((state) => state.chatWorkspaceRoot);
   const studioWorkspaceRoot = useWorkspaceStore((state) => state.studioWorkspaceRoot);
@@ -404,7 +403,7 @@ function ChatRouteGlobalShortcuts() {
         if (!latestUsableProjectId) return;
         event.preventDefault();
         event.stopPropagation();
-        void handleNewThread(latestUsableProjectId);
+        void startBareCliThread({ projectId: latestUsableProjectId });
         return;
       }
 
@@ -413,12 +412,7 @@ function ChatRouteGlobalShortcuts() {
         if (!target) return;
         event.preventDefault();
         event.stopPropagation();
-        void handleNewThread(target.projectId, {
-          ...(target.inheritContext
-            ? resolveInheritedThreadContext({ activeThread, activeDraftThread })
-            : {}),
-          entryPoint: "terminal",
-        });
+        void startBareCliThread({ projectId: target.projectId });
         return;
       }
 
@@ -450,11 +444,9 @@ function ChatRouteGlobalShortcuts() {
             });
             return;
           }
-          await handleNewThread(target.projectId, {
+          await startBareCliThread({
+            projectId: target.projectId,
             provider,
-            ...(target.inheritContext
-              ? resolveInheritedThreadContext({ activeThread, activeDraftThread })
-              : {}),
           });
         })();
         return;
@@ -469,12 +461,7 @@ function ChatRouteGlobalShortcuts() {
       if (!target) return;
       event.preventDefault();
       event.stopPropagation();
-      void handleNewThread(
-        target.projectId,
-        target.inheritContext
-          ? resolveInheritedThreadContext({ activeThread, activeDraftThread })
-          : undefined,
-      );
+      void startBareCliThread({ projectId: target.projectId });
     };
 
     window.addEventListener("keydown", onWindowKeyDown, { capture: true });
@@ -482,14 +469,11 @@ function ChatRouteGlobalShortcuts() {
       window.removeEventListener("keydown", onWindowKeyDown, { capture: true });
     };
   }, [
-    activeDraftThread,
-    activeThread,
     cancelRecentSwitcher,
     clearSelection,
     commitRecentSwitcherSelection,
     currentProjectId,
     handleNewChatForActiveSurface,
-    handleNewThread,
     keybindings,
     latestUsableProjectId,
     openOrAdvanceRecentSwitcher,
@@ -498,6 +482,7 @@ function ChatRouteGlobalShortcuts() {
     refreshProviderStatuses,
     recentSwitcherState,
     selectedThreadIdsSize,
+    startBareCliThread,
     terminalOpen,
     terminalWorkspaceOpen,
     toggleSidebar,

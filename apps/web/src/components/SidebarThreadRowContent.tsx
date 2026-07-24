@@ -5,6 +5,7 @@
 import { useMemo, type ReactNode } from "react";
 
 import { isGenericChatThreadTitle } from "@synara/shared/chatThreads";
+import type { TerminalCliKind } from "@synara/shared/terminalThreads";
 import { pluralize } from "@synara/shared/text";
 
 import { createThreadSelector } from "../storeSelectors";
@@ -12,13 +13,18 @@ import { useStore } from "../store";
 import { resolveSubagentPresentationForThread } from "../lib/subagentPresentation";
 import { resolveThreadHandoffBadgeLabel } from "../lib/threadHandoff";
 import { SIDEBAR_ROW_LABEL_TEXT_CLASS_NAME } from "../sidebarRowStyles";
-import type { SidebarThreadSummary } from "../types";
-import { DatabaseIcon, TerminalIcon } from "../lib/icons";
+import type { SidebarThreadSummary, ThreadPrimarySurface } from "../types";
+import { DatabaseIcon } from "../lib/icons";
 import { cn } from "../lib/utils";
-import type { ThreadPrimarySurface } from "../types";
 import { ProviderIcon } from "./ProviderIcon";
 import { SidebarGlyph } from "./sidebarGlyphs";
+import TerminalIdentityIcon from "./terminal/TerminalIdentityIcon";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
+import {
+  defaultTerminalTitleForCliKind,
+  type TerminalIconKey,
+} from "@synara/shared/terminalThreads";
+import { terminalIdentityForProvider } from "~/lib/bareCliLaunch";
 
 export interface SidebarThreadTerminalStatus {
   label: "Terminal input needed" | "Terminal task completed" | "Terminal process running";
@@ -168,6 +174,7 @@ export function SidebarThreadRowContent({
   thread,
   terminalEntryPoint,
   primarySurface = "chat",
+  terminalCliKind = null,
   terminalStatus,
   terminalCount,
   isActive,
@@ -180,6 +187,7 @@ export function SidebarThreadRowContent({
   /** @deprecated Prefer primarySurface — kept for older call sites. */
   terminalEntryPoint?: boolean;
   primarySurface?: ThreadPrimarySurface;
+  terminalCliKind?: TerminalCliKind | null;
   terminalStatus: SidebarThreadTerminalStatus | null;
   terminalCount: number;
   isActive: boolean;
@@ -209,6 +217,23 @@ export function SidebarThreadRowContent({
         })
       : null;
   const showThreadProviderAvatar = !isGenericChatThreadTitle(thread.title);
+  const providerFallback = thread.session?.provider ?? thread.modelSelection.provider;
+  const terminalIconKey: TerminalIconKey = terminalCliKind
+    ? terminalCliKind === "codex"
+      ? "openai"
+      : terminalCliKind === "claude"
+        ? "claude"
+        : terminalCliKind === "cursor"
+          ? "cursor"
+          : terminalCliKind === "grok"
+            ? "grok"
+            : terminalCliKind === "opencode"
+              ? "opencode"
+              : "terminal"
+    : terminalIdentityForProvider(providerFallback).iconKey;
+  const terminalTitle = terminalCliKind
+    ? defaultTerminalTitleForCliKind(terminalCliKind)
+    : terminalIdentityForProvider(providerFallback).title;
 
   return (
     <>
@@ -226,7 +251,12 @@ export function SidebarThreadRowContent({
           />
         </span>
       ) : resolvedPrimarySurface === "terminal" ? (
-        <SidebarGlyph icon={TerminalIcon} variant="chrome" />
+        <span
+          className="inline-flex size-3.5 shrink-0 items-center justify-center"
+          title={terminalTitle}
+        >
+          <TerminalIdentityIcon iconKey={terminalIconKey} className="size-3.5" />
+        </span>
       ) : resolvedPrimarySurface === "database" ? (
         <SidebarGlyph icon={DatabaseIcon} variant="chrome" />
       ) : showThreadProviderAvatar ? (

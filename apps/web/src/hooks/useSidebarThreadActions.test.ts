@@ -238,7 +238,6 @@ function render(
       sidebarThreadSortOrder: "updated_at",
     },
     clearTerminalState: harness.clearTerminalState,
-    handleNewChat: harness.handleNewChat,
     projectById: new Map([[PROJECT_ID, PROJECT]]),
     routeSplitViewId: overrides.routeSplitViewId ?? null,
     routeThreadId: overrides.routeThreadId ?? null,
@@ -494,7 +493,7 @@ describe("useSidebarThreadActions", () => {
     expect(navigation.search()).toEqual({ splitViewId: "split-actions" });
   });
 
-  it("opens a fresh chat when deleting the last pane leaves no fallback", async () => {
+  it("navigates home when deleting the last pane leaves no fallback", async () => {
     sidebarThreads = [makeThread(THREAD_ID)];
     harness.resolveSplitViewPaneIdForThread.mockReturnValue("pane-only");
     harness.resolveSplitViewFocusedThreadId.mockReturnValue(null);
@@ -505,7 +504,7 @@ describe("useSidebarThreadActions", () => {
       routeThreadId: THREAD_ID,
     }).deleteThread(THREAD_ID);
 
-    expect(harness.navigate).not.toHaveBeenCalled();
-    expect(harness.handleNewChat).toHaveBeenCalledWith({ fresh: true });
+    expect(harness.handleNewChat).not.toHaveBeenCalled();
+    expect(harness.navigate).toHaveBeenCalledWith({ to: "/", replace: true });
   });
 });

@@ -17,6 +17,7 @@ import {
   resolveThreadBootstrapPlan,
   type NewThreadOptions,
 } from "../lib/threadBootstrap";
+import { terminalIdentityForProvider } from "../lib/bareCliLaunch";
 import { promoteThreadCreate } from "../lib/threadCreatePromotion";
 import {
   draftNavigationSlotKey,
@@ -29,6 +30,7 @@ import { useFocusedChatContext } from "../focusedChatContext";
 import { useStore } from "../store";
 import { useTemporaryThreadStore } from "../temporaryThreadStore";
 import { useTerminalStateStore } from "../terminalStateStore";
+import { DEFAULT_THREAD_TERMINAL_ID } from "../types";
 
 export interface NewThreadNavigationOptions {
   /**
@@ -94,7 +96,20 @@ export function useHandleNewThread() {
     };
     const activateThreadEntryPoint = (threadId: ThreadId) => {
       if (entryPoint === "terminal") {
+        const preferredTerminalCwd = options?.preferredTerminalCwd?.trim() || null;
+        if (preferredTerminalCwd) {
+          useTerminalStateStore.getState().setPreferredTerminalCwd(threadId, preferredTerminalCwd);
+        }
+        // Open the terminal page first so DEFAULT_THREAD_TERMINAL_ID exists, then seed identity
+        // before navigation paints — otherwise the header flashes the project default (Codex).
         openTerminalThreadPage(threadId, { terminalOnly: true });
+        if (options?.provider) {
+          const identity = terminalIdentityForProvider(options.provider);
+          useTerminalStateStore.getState().setTerminalMetadata(threadId, DEFAULT_THREAD_TERMINAL_ID, {
+            cliKind: identity.cliKind,
+            label: identity.title,
+          });
+        }
         return;
       }
       if (entryPoint === "database") {
@@ -193,7 +208,15 @@ export function useHandleNewThread() {
     const createTerminalThread = (
       threadId: ThreadId,
       creationState: ReturnType<typeof resolveCreationState>,
-    ) => promotePrimarySurfaceThread(threadId, creationState, "New terminal");
+    ) =>
+      promotePrimarySurfaceThread(
+        threadId,
+        creationState,
+        options?.title?.trim() ||
+          (options?.provider
+            ? terminalIdentityForProvider(options.provider).title
+            : "New terminal"),
+      );
     const createDatabaseThread = (
       threadId: ThreadId,
       creationState: ReturnType<typeof resolveCreationState>,
