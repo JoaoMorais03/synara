@@ -271,7 +271,16 @@ export async function inspectDatabaseSchema(input: {
       order by c.table_schema, c.table_name, c.ordinal_position
     `)) as Array<Record<string, unknown>>;
 
-    const bySchema = new Map<string, Map<string, DatabaseSchemaNamespace["tables"][number]>>();
+    type MutableTable = {
+      name: string;
+      columns: Array<{
+        name: string;
+        dataType: string;
+        nullable: boolean;
+        isPrimaryKey: boolean;
+      }>;
+    };
+    const bySchema = new Map<string, Map<string, MutableTable>>();
     for (const row of Array.isArray(rows) ? rows : []) {
       if (!row || typeof row !== "object") continue;
       const schemaName = String(row.schema_name ?? "public");
@@ -619,7 +628,7 @@ const makeDatabaseConnectionStore = Effect.gen(function* () {
       yield* fileSystem.remove(secretPath(secretName), { force: true }).pipe(Effect.orElseSucceed(() => undefined));
     });
 
-  const list = (projectId: ProjectId): Effect.Effect<DatabaseListConnectionsResult> =>
+  const list = (projectId: ProjectId) =>
     readStore.pipe(
       Effect.map((store) => ({
         connections: store.connections
@@ -627,9 +636,12 @@ const makeDatabaseConnectionStore = Effect.gen(function* () {
           .map(toClientConnection)
           .sort((left, right) => left.label.localeCompare(right.label)),
       })),
+      Effect.mapError((cause) =>
+        cause instanceof Error ? cause : new Error("Failed to list database connections."),
+      ),
     );
 
-  const upsert = (input: DatabaseUpsertConnectionInput): Effect.Effect<DatabaseConnection, Error> =>
+  const upsert = (input: DatabaseUpsertConnectionInput) =>
     Effect.gen(function* () {
       const shapeError = validateConnectionShape(input);
       if (shapeError) {
@@ -682,7 +694,7 @@ const makeDatabaseConnectionStore = Effect.gen(function* () {
       return toClientConnection(next);
     });
 
-  const remove = (input: DatabaseDeleteConnectionInput): Effect.Effect<void, Error> =>
+  const remove = (input: DatabaseDeleteConnectionInput) =>
     Effect.gen(function* () {
       const store = yield* readStore;
       const existing = store.connections.find(
@@ -698,7 +710,7 @@ const makeDatabaseConnectionStore = Effect.gen(function* () {
       });
     });
 
-  const test = (input: DatabaseTestConnectionInput): Effect.Effect<DatabaseTestConnectionResult> =>
+  const test = (input: DatabaseTestConnectionInput) =>
     Effect.gen(function* () {
       let engine = input.engine;
       let host = input.host;
@@ -846,6 +858,6 @@ const makeDatabaseConnectionStore = Effect.gen(function* () {
   return { list, upsert, remove, test, query, applyCellEdits, inspectSchema };
 });
 
-export type DatabaseConnectionStore = Effect.Effect.Success<typeof makeDatabaseConnectionStore>;
+export type DatabaseConnectionStore = Effect.Success<typeof makeDatabaseConnectionStore>;
 
 export const getDatabaseConnectionStore = makeDatabaseConnectionStore;

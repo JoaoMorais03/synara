@@ -27,13 +27,20 @@ Commit: `feat(desktop): focus product on simple macOS ADE`
 - Delete `docs/external-mcp.md`; rewrite root README vision
 - Root dist: macOS DMG only; drop canary/marketing scripts
 
-## Phase B (this follow-up)
+## Phase B (landed)
+
+Commit: `feat(ade): fail-close External MCP product APIs`
 
 - WS RPC External MCP methods fail closed with clear error
 - Web `NativeApi` External MCP methods reject locally (no network)
 - HTTP External MCP routes always return **410 Gone**
 - Route integration tests reduced to fail-closed coverage; body-read unit tests kept
 - This progress note
+
+## Hygiene (landed on same branch)
+
+- Fix `apps/server` database connection store typecheck errors (readonly columns builder + Effect error types)
+- Server `tsc --noEmit` clean after that fix
 
 ## Still deferred (Phase C+)
 
