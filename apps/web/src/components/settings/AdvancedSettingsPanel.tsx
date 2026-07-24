@@ -13,6 +13,7 @@ import { DisclosureChevron } from "~/components/ui/DisclosureChevron";
 import { DisclosureRegion } from "~/components/ui/DisclosureRegion";
 import { Button } from "~/components/ui/button";
 import { toastManager } from "~/components/ui/toast";
+import { isElectron } from "~/env";
 import { ensureNativeApi, readNativeApi } from "~/nativeApi";
 import { serverAuthSessionQueryOptions, serverConfigQueryOptions } from "~/lib/serverReactQuery";
 import { cn } from "~/lib/utils";
@@ -118,7 +119,9 @@ export function AdvancedSettingsPanel(props: {
     const result = await logoutCurrentBrowserSession({
       confirm: () =>
         api.dialogs.confirm(
-          "Sign out this browser?\n\nIts session and every live connection opened with it will be revoked.",
+          isElectron
+            ? "Sign out this app session?\n\nIts session and every live connection opened with it will be revoked."
+            : "Sign out this browser?\n\nIts session and every live connection opened with it will be revoked.",
         ),
       logout: () => api.server.logoutAuthSession(),
       navigate: (path) => window.location.assign(path),
@@ -139,8 +142,12 @@ export function AdvancedSettingsPanel(props: {
       {authSessionQuery.data?.authenticated ? (
         <SettingsSection title="Session">
           <SettingsRow
-            title="This browser"
-            description="Revoke this browser session and close every live Synara connection it owns. A fresh pairing link is required to reconnect."
+            title={isElectron ? "This app" : "This browser"}
+            description={
+              isElectron
+                ? "Revoke this desktop session and close every live Synara connection it owns."
+                : "Revoke this browser session and close every live Synara connection it owns. A fresh pairing link is required to reconnect."
+            }
             status={`Authenticated as ${authSessionQuery.data.role ?? "client"}.`}
             control={
               <Button
